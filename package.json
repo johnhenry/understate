@@ -1,0 +1,25 @@
+{
+  "name": "understate",
+  "version": "0.0.1",
+  "description": "State Manager",
+  "keywords": [
+    "state",
+    "manager",
+    "immutable",
+    "store"
+  ],
+  "main": "index.js",
+  "scripts": {
+    "start": "echo \"Error: no start specified\" && exit 1",
+    "test": "node test/es6testrunner.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/johnhenry/understate.git"
+  },
+  "author": "John Henry",
+  "license": "ISC",
+  "devDependencies": {
+    "babel": "^5.8.23"
+  }
+}
