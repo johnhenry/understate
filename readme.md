@@ -4,7 +4,7 @@ State Manager
 ##About
 Understate works by creating objects that ingest mutator functions to update its internal state.
 Wait, what?!
-...Okay, let's start over.
+...Okay, let's start over...
 
 ###Basic Usage
 
@@ -16,6 +16,8 @@ var log = value => console.log(value);
 var state = new Understate({});
 state.get().then(log);//undefined
 ```
+
+Note: I'm passing an empty config object here into the constructor function. I don't think this should necessary, but, with my current es6 transplier, it an error is thrown without it. No big deal, maybe we'll come back to this somewhere down the line...
 
 You can also pass an initial value when creating a Understate object.
 
@@ -65,7 +67,7 @@ state.set(increment);//(Nothing logged)
 
 Understate objects track their state internally.
 
-Each reinstate object associates an id with it's value whenever it's value us update. This can be accessed from the "id" method.
+Each Understate object associates an id with it's value whenever it's value us update. This can be accessed from the "id" method.
 
 ```javascript
 var log = value => console.log(value);
@@ -87,7 +89,7 @@ state.set(increment, true);//*<ID>:1
 state.set(increment, true);//*<ID>:2
 ```
 
-In addition, passing a second, truthy argument to the "set" function will also cause the reinstate object to internally index it's state by id. This id can later be used to access any indexed states by passing it to the "get" method.
+In addition, passing a second, truthy argument to the "set" function will also cause the Understate object to internally index it's state by id. This id can later be used to access any indexed states by passing it to the "get" method.
 
 ```javascript
 var log = value => console.log(value);
@@ -212,8 +214,6 @@ Create new Understate instance
 ```javascript
 var state = new Understate({});
 ```
-Note: I'm passing an empty config object here into the constructor function. I don't think this should necessary, but, with my current es6 transplier, it an error is thrown without it. No big deal, maybe we'll come back to this somewhere down the line...
-
 Create new Understate instance with an initial value
 ```javascript
 var state = new Understate({initial:/*sone initial value*/});
