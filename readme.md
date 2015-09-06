@@ -5,7 +5,7 @@ This was inspired by [Redux](https://github.com/rackt/redux/) along with another
 
 Understate aims to be similar to Redux, but with some parts abstracted out of the core library.
 
-In addition, Understate provides a mechanism for memorizing and retrieve states by id.
+In addition, Understate provides a mechanism for indexing and retrieve states by id.
 
 Understate does not enforce immutability. However, using immutable objects as values for state has number advantages related to performance, correctness, and reasonability. Consider using it in conjunction with a library such as [Immutable](https://github.com/facebook/immutable-js/).
 
@@ -443,6 +443,11 @@ var quoter = state => '"' + String() + '"';
 state.set().then((state, id)=>console.log(id, state));
 ```
 
+####Understate#s(...);
+
+Same as Understate#set (See above), but returns the original object. Useful for chaining.
+
+
 ####Understate#id();
 
 Get the id of the current state.
@@ -484,3 +489,39 @@ Subscribe to changes in a state
 ```javascript
 state.subscribe(state=>console.log(state));
 ```
+
+Note: The object returned by unsubscribe is linked to the original. Methods called on the original will affect the new object and vice versa, though the original will not have an unsubscribe method.
+
+```javascript
+var s = new Reinstate({});
+var t = s.subscribe(_=>console.log(_));
+t.set(constant(0), true);//0
+s.set(add(1));//1
+t.set(add(1));//2
+s.set(add(1));//3
+t.set(add(1));//4
+s.set(add(1));//5
+t.unsubscribe();
+s.unsubscribe();//*THROWS ERROR
+```
+
+Note: The current implementation uses sets.
+Meaning the following would result in two subscriptions:
+
+```javascript
+state.subscribe(state=>console.log(state));
+state.subscribe(state=>console.log(state));
+```
+
+while the following will only result in one
+
+```javascript
+var log = state=>console.log(state)
+state.subscribe(log);
+state.subscribe(log);
+state.subscribe(log);
+state.subscribe(log);
+state.subscribe(log);
+```
+
+as each 'log' is the same object
