@@ -27,7 +27,7 @@ var state = new Understate({});
 state.get().then(log);//undefined
 ```
 
-Note: I'm passing an empty config object here into the constructor. I don't think this _should_ be necessary, but, with my current es6 transplier, my test throw errows without it. No big deal, maybe we'll come back to this somewhere down the line...
+Note: I'm passing an empty config object here into the constructor. I don't think this _should_ be necessary, but, with my current es6 transplier, my test throws an errow without it. No big deal, maybe we'll come back to this somewhere down the line...
 
 You can also pass an initial value when creating a Understate object.
 
@@ -140,7 +140,7 @@ var increment = state => state + 1;//This mutator returns the state incrimented 
 ###Redux Comparison
 
 Similar concepts in [Redux]():
-
+Understate()
 ```javascript
 //Setting state using a mutator function in Understate
 Understate#.set(mutator);
@@ -194,7 +194,7 @@ can use a constant function.
 
 ```javascript
 var one   = x => 1;
-var state = new Understate();
+var state = new Understate({});
 state.subscribe(log);
 state.set(one);//1
 state.set(one);//1
@@ -205,48 +205,62 @@ We can create constant function builders as well.
 
 ```javascript
 var constant  = a => () => a;
-var one       = constant(1);//This is equivalent to one
-var state     = new Understate();
+var one       = constant(1);//This is equivalent to "one" defined above.
+var state     = new Understate({});
 state.subscribe(log);
 state.set(one);//1
 state.set(one);//1
 state.set(constant(1));//1
 ```
 
+###Using Builders
 
-##Routers
-Using mutators and builders allows us to elegantly express how we modify an application's state;
+Using different types of builders allows us to elegantly express how we modify an application's state.
 
 ```javascript
 //CounterApplication.js
+import Understate from 'Understate';
+var log       = value => console.log(value);
+//Builders
 var constant  = a => _ => a;
 var adder     = a => b => b + a;
-
-//
+//Mutators
 var zero      = constant(0);
 var increment = adder(1);
-var counter   = new Understate();
+//App
+var counter   = new Understate({});
 counter.subscribe(log);
 counter.set(zero);//0
 counter.set(increment);//1
-counter.set(increment);//2
+counter.set(adder(2));//3
+```
 
-//
-var empty       = constant([]);
+```javascript
+//messageApplicatiopn.js
+import Understate from 'Understate';
+var log         = value => console.log(value);
+//Builders
+var constant    = a => _ => a;
 var addMessage  = message => messages => messages.concat(message);
+//Mutators
+var empty       = constant([]);
+//App
 var messages    = new Understate({});
 messages.subscribe(log);
 messages.set(empty);//[]
 messages.set(addMessage('Hello'));//['Hello']
 messages.set(addMessage('there'));//['Hello', 'there']
-messages.set(addMessage('John'));//['Hello', 'there', 'John']
+messages.set(addMessage('John.'));//['Hello', 'there', 'John.']
 ```
+
+##Routers
 
 The final piece of the puzzle is the *router*. It's job is to take "action" from another component in the application, and return a mutator function to be applied to the current state. It does this by selecting a builders based on an action and extracting parameters from that action.
 
 In fact, Routers are, strictly speaking, builders, as they take in a parameter, "action", and return a mutator function. They are still; however, a useful abstraction when it comes to deciding how to handle updates.
 
 ###Signature
+
 A router should have the following signature:
 
 ```javascript
@@ -257,7 +271,8 @@ action => /*<Mutator>*/;
 
 
 ###Example
-This is a sample router
+
+This is an application that uses a sample router.
 
 ```javascript
 //File: sampleRouters.js
