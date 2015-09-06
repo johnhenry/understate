@@ -48,4 +48,6 @@ s.set(add(1));//3
 t.set(add(1));//4
 s.set(add(1));//5
 t.unsubscribe();
-//s.unsubscribe();//*THROWS ERROR
+s.set(add(1));//(Logs Nothing)
+t.set(add(1));//(Logs Nothing)
+//s.unsubscribe();//(Throws Error)
