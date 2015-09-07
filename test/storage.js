@@ -1,5 +1,5 @@
 import localStorage from './notLocalStorage.js';
-const LATESTID = "LatestID";
+const LATESTID = "LATEST";
 //Test =========================================================================
 //Storage-----------------------------------------------------------------------
 var deserialize = function(data){
@@ -24,5 +24,6 @@ var setLatest = function(id, state){
 export default {
   getStorage,
   setStorage,
-  setLatest
+  setLatest,
+  LATESTID
 }
