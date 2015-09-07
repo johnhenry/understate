@@ -27,7 +27,7 @@ var state = new Understate({});
 state.get().then(log);//undefined
 ```
 
-Note: I'm passing an empty config object here into the constructor. I don't think this _should_ be necessary, but, with my current es6 transplier, my test throws an errow without it. No big deal, maybe we'll come back to this somewhere down the line...
+Note: I'm passing an empty config object here into the constructor. I don't think this _should_ be necessary, but, with my current es6 transplier, my test throws an error without it. No big deal, maybe we'll come back to this somewhere down the line...
 
 You can also pass an initial value when creating a Understate object.
 
@@ -257,7 +257,7 @@ messages.set(addMessage('John.'));//['Hello', 'there', 'John.']
 
 The final piece of the puzzle is the *router*. It's job is to take "action" from another component in the application, and return a mutator function to be applied to the current state. It does this by selecting a builders based on an action and extracting parameters from that action.
 
-In fact, Routers are, strictly speaking, builders, as they take in a parameter, "action", and return a mutator function. They are still; however, a useful abstraction when it comes to deciding how to handle updates.
+Routers, strictly speaking, are builders, as they take in a parameter, "action", and return a mutator function. They are still; however, a useful abstraction when it comes to deciding how to handle updates.
 
 ###Signature
 
