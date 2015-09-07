@@ -298,19 +298,19 @@ messages.set(addMessageLog('John.'));//'John. received.'
 ```
 **Decorators** take in functions return similar functions with enhanced functionality. We can use them to make this pattern more succinct.
 
+**Decorators** should take a function as one of it's arguments and return a function with the same signature. We apply them to **builder** functions
+
 ```javascript
 //messageApplicatiopn.js
 import Understate from 'Understate';
 //Decorators
-var logDecorator = function(preamble, conclusion, func){
-  return (...args) => {
+var logInput = (target =  _ => _ , preamble = '', conclusion = '') => (...args) => {
     console.log(preamble + String(args) + conclusion);
-    return func.apply(this, args);
-  }
+    return target.apply(this, args);
 }
 //Builders
-var constant    = logDecorator('Setting constant: ', '',a => _ => a);
-var addMessage  = logDecorator('', ' received.', message => messages => messages.concat(message));
+var constant    = logInput(a => _ => a, 'Setting constant: ');
+var addMessage  = logInput(message => messages => messages.concat(message), '', ' received.');
 //Mutators
 var empty       = constant([]);
 //App
