@@ -1,5 +1,5 @@
 //Imports-----------------------------------------------------------------------
-import Reinstate from '..';
+import Understate from '..';
 import {getStorage, setLatest, LATESTID} from './storage';
 //State-------------------------------------------------------------------------
 var DEFAULTSTATE = 0;
@@ -13,7 +13,7 @@ var idLog = (state, id = undefined) => {
   console.log(`ID: ${id}
 STATE: ${state}`);
 };
-(new Reinstate({index:true}))
+(new Understate({index:true}))
 .s(initialize).subscribe(idLog)
 .s(add(1)).unsubscribe()
 .s(add(2)).subscribe(idLog)

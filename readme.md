@@ -262,6 +262,7 @@ var log = value => console.log(value);
 //Builders
 var constant    = a => _ => a;
 var addMessage  = message => messages => messages.concat(message);
+var logger = message => {log(message); return message};
 //Mutators
 var empty       = constant([]);
 //App
@@ -272,6 +273,30 @@ messages.set(addMessage('Hello'));//['Hello']
 messages.set(addMessage('there'));//['Hello', 'there']
 messages.set(addMessage('John.'));//['Hello', 'there', 'John.']
 ```
+
+####Mutators Vs Middleware
+
+Redux has a concept of _middleware_ used to intercept objects and preform actions such a logging.
+
+Rather, we can simply design our **mutators** to preform these actions.
+
+```javascript
+//messageApplicatiopn.js
+import Understate from 'Understate';
+var receiveLog = value => {console.log(value + ' received.'); return value};
+//Builders
+var constant    = a => _ => { console.log('Setting constant: ' + a); return a};
+var addMessage  = message => messages => messages.concat(receiveLog(message));
+//Mutators
+var empty       = constant([]);
+//App
+var messages    = new Understate({});
+messages.set(empty);//'Setting constant:'
+messages.set(addMessage('Hello'));//'Hello received.'
+messages.set(addMessage('there'));//'there received.'
+messages.set(addMessage('John.'));//'John. received.'
+```
+
 
 ##Routers
 
