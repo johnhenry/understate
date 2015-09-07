@@ -13,14 +13,14 @@ var idLog = (state, id = undefined) => {
   console.log(`ID: ${id}
 STATE: ${state}`);
 };
-(new Understate({index:true}))
-.s(initialize).subscribe(idLog)
-.s(add(1)).unsubscribe()
-.s(add(2)).subscribe(idLog)
-.s(add(3)).unsubscribe()
-.s(add(4)).subscribe(idLog)
-.s(add(5)).unsubscribe()
-.s(add(6)).subscribe(idLog)
-.s(add(7)).unsubscribe()
-.s(add(8)).subscribe(idLog)
-.s(add(9)).unsubscribe();
+(new Understate({index:true}))//Orignal Instance
+.s(initialize).subscribe(idLog)//New Instance
+.s(add(1)).unsubscribe()//Orignal Instance
+.s(add(2)).subscribe(idLog)//New Instance
+.s(add(3)).unsubscribe()//Orignal Instance
+.s(add(4)).subscribe(idLog)//New Instance
+.s(add(5)).unsubscribe()//Orignal Instance
+.s(add(6)).subscribe(idLog)//New Instance
+.s(add(7)).unsubscribe()//Orignal Instance
+.s(add(8)).subscribe(idLog)//New Instance
+.s(add(9)).unsubscribe();//Orignal Instance

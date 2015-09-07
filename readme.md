@@ -3,7 +3,7 @@ A simple state manager.
 
 This was inspired by [Redux](https://github.com/rackt/redux/) along with another [old project of mine](https://github.com/johnhenry/polyfill-function).
 
-Understate aims to be similar to Redux, but with some parts abstracted out of the core library.
+Understate aims to be similar to Redux, but with some parts abstracted out of the core library using higher-order functional concepts.
 
 In addition, Understate provides a mechanism for indexing and retrieve states by id.
 
@@ -274,7 +274,7 @@ messages.set(addMessage('there'));//['Hello', 'there']
 messages.set(addMessage('John.'));//['Hello', 'there', 'John.']
 ```
 
-####Mutators Vs Middleware
+####Decorators
 
 Redux has a concept of _middleware_ used to intercept objects and preform actions such a logging.
 
@@ -286,7 +286,31 @@ import Understate from 'Understate';
 var receiveLog = value => {console.log(value + ' received.'); return value};
 //Builders
 var constant    = a => _ => { console.log('Setting constant: ' + a); return a};
-var addMessage  = message => messages => messages.concat(receiveLog(message));
+var addMessageLog  = message => messages => messages.concat(receiveLog(message));
+//Mutators
+var empty       = constant([]);
+//App
+var messages    = new Understate({});
+messages.set(empty);//'Setting constant:'
+messages.set(addMessageLog('Hello'));//'Hello received.'
+messages.set(addMessageLog('there'));//'there received.'
+messages.set(addMessageLog('John.'));//'John. received.'
+```
+**Decorators** take in functions return similar functions with enhanced functionality. We can use them to make this pattern more succinct.
+
+```javascript
+//messageApplicatiopn.js
+import Understate from 'Understate';
+//Decorators
+var logDecorator = function(preamble, conclusion, func){
+  return (...args) => {
+    console.log(preamble + String(args) + conclusion);
+    return func.apply(this, args);
+  }
+}
+//Builders
+var constant    = logDecorator('Setting constant: ', '',a => _ => a);
+var addMessage  = logDecorator('', ' received.', message => messages => messages.concat(message));
 //Mutators
 var empty       = constant([]);
 //App
@@ -297,6 +321,7 @@ messages.set(addMessage('there'));//'there received.'
 messages.set(addMessage('John.'));//'John. received.'
 ```
 
+Note: Ecmascript 7 (2016) has a similar new language feature, also called "decorators", that work in a similar way, but can only be applied to class methods.
 
 ##Routers
 
