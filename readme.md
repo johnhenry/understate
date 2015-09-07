@@ -13,11 +13,11 @@ Understate does not enforce immutability. However, using immutable objects as va
 Understate works by creating objects that ingest *mutator* functions to update their *internal state*.
 Wait, what?!
 
-...Okay, let's start over... maybe if we just jump right in...
+...Okay, let's start over... maybe if we just jump right into it...
 
 ###Basic Usage
 
-When you first create an Understate object, it has an initial internal value.
+When you first create an Understate object, it has an initial internal state.
 That can be accesses via the "get" method.
 
 ```javascript
@@ -36,7 +36,7 @@ var state = new Understate({initial: 0});
 state.get().then(log);//0
 ```
 
-You can update the internal value by passing a *mutator* (See Below) function to the "set" method.
+You can update the internal value by passing a **mutator** (See Below) function to the "set" method.
 
 ```javascript
 var increment = x => x + 1;
@@ -45,7 +45,7 @@ state.get().then(log);//0
 state.set(increment).then(log);//1
 ```
 
-You can subscribe to updates with the "subscribe" function.
+You can subscribe to updates with the **"subscribe"** method.
 
 ```javascript
 var state     = new Understate({initial: 0});
@@ -55,7 +55,7 @@ state.set(increment);//2
 state.set(increment);//3
 ```
 
-You can unsubscribe to updates by calling the "unsubscribe" method on the object returned by the subscribe method.
+You can unsubscribe to updates by calling the **"unsubscribe"** method on the object returned by the subscribe method.
 
 ```javascript
 var state         = new Understate({initial: 0});
@@ -66,11 +66,11 @@ unsubscriber.unsubscribe();
 state.set(increment);//(Nothing logged)
 ```
 
-###Memorization
+###Indexation
 
 Understate objects track their state internally.
 
-Each Understate object associates an id with it's value whenever it's value us update. This can be accessed from the "id" method.
+Each Understate object associates an id with it's value whenever it's value us update. This can be accessed from the **"id"** method.
 
 ```javascript
 var state     = new Understate({initial:0});
@@ -78,7 +78,7 @@ log(state.id());//*<ID>
 state.set(increment).then(x=>console.log(state.id()));//*<ID(Different)>
 ```
 
-Passing a second, truthy argument to the "set" function will cause its id to be emitted in the function passed to subscribe.
+Passing a second, _truthy_ argument to the **"set"** function will cause its id to be passed as a second argument to the function passed to subscribe.
 
 ```javascript
 var logId     = (value, id) => console.log(`${id}:${value}`);
@@ -89,7 +89,7 @@ state.set(increment, true);//*<ID>:1
 state.set(increment, true);//*<ID>:2
 ```
 
-In addition, passing a second, truthy argument to the "set" function will also cause the Understate object to internally index it's state by id. This id can later be used to access any indexed states by passing it to the "get" method.
+In addition, passing a second, _truthy_ argument to the **"set"** function will also cause the Understate object to internally index it's state by id. This id can later be used to access any indexed states by passing it to the **"get"** method.
 
 ```javascript
 var state     = new Understate({initial:0});
@@ -99,7 +99,7 @@ state.set(increment, true);//1 (After 5 seconds)
 state.set(increment, true);//2 (After 5 seconds)
 ```
 
-Passing a truthy index option to the constructor will cause the set function to automatically index values.
+Passing a _truthy_ index option to the constructor will cause the set function to automatically index values.
 
 ```javascript
 var logId     = (value, id) => console.log(`${id}:${value}`);
@@ -110,7 +110,7 @@ state.set(increment);//*<ID>:1
 state.set(increment, false);//undefined:2
 ```
 
-If not already indexed, you can index the current state by passing a truthy argument to the id method.
+If not already indexed, you can index the current state by passing a _truthy_ argument to the id method.
 
 ```javascript
 var state     = new Understate({initial:0);
@@ -121,11 +121,11 @@ state.get(id).then(log);//1
 
 ##Mutators
 
-*Mutator* functions SHOULD be pure functions (no side effects) that take in a state and return an updated copy of that state without modifying the original (immutability).
+**Mutator** functions SHOULD be pure functions (they have no side effects) that take in a state and return an updated copy of that state without modifying the original (they respect immutability). With that said, these ideas are pretty much programmatically unenforceable, so if you wish to follow this convention, you'll have to take special care to enforce these properties upon your code yourself.
 
 ###Signature
 
-A mutator should have the following function signature:
+A **mutator** should have the following function signature:
 
 ```javascript
 state => {/*some combination of closure and "state"*/};
@@ -133,29 +133,33 @@ state => {/*some combination of closure and "state"*/};
 
 ###Example
 
+This mutator returns the state incrimented by 1
+
 ```javascript
-var increment = state => state + 1;//This mutator returns the state incrimented by 1;
+var increment = state => state + 1;
 ```
 
 ###Redux Comparison
 
-Similar concepts in [Redux]():
-Understate()
-```javascript
-//Setting state using a mutator function in Understate
-Understate#.set(mutator);
+Setting state using a mutator function in Understate
 
-//Setting state using an action object in Redux
+```javascript
+Understate#.set(mutator);
+```
+
+Setting state using an action object in Redux
+
+```javascript
 Redux#store.dispatch(action);
 ```
 
 ##Builders
-Since a mutator function only takes in a state, any modifications that are made to it must be based on its closure.
+Since a **mutator** function only takes in a state, any modifications that are made to it must be based on its closure.
 
-We can take advantage of this by creating mutation *builder* functions that takes, as arguments, a set of parameters and return functions of state that use the parameters in its closure.
+We can take advantage of this by creating mutation **builder** functions that takes, as arguments, a set of parameters and return **mutators** that use the parameters in its closure.
 
 ###Signature
-A builder function should have the following function signature:
+A **builder** function should have the following function signature:
 
 ```javascript
 (...parameters) => state => {/*some combination of closure, "parameters", and "state"*/};
@@ -166,28 +170,44 @@ A builder function should have the following function signature:
 ###Example
 
 ```javascript
-var adder     = a => b => b + a;
-var increment = adder(1);//This is equivalent to the increment function defined above
+var adder     = y => x => x + y;
+var increment = adder(1);
+//This is equivalent to the increment function defined above
+// adder(y) = y => x => x + y;
+// adder(1) = x => x + 1;
 ```
 
 ###Redux Comparison
 
-Similar concepts in [Redux]():
+We can see that a **builder** function and a reducer function from Redux are very similar.
+
+####Builder Function
 
 ```javascript
-//Builder signature
 (...paramters) => previousState => newState
-//We can see that a builder function and a reducer function are very similar.
-
-//Reducer signature in Redux
-(previousState, action) => newState
-//If you were to reverse the parameters in a reducer...
-(action, previousState) => newState
-//and then Schönfinkel it
-action => previousState => newState
-//you'd end up with a builder that takes an action as it's parameter
 ```
-###Initialization with constant function builders
+
+####Reducer Function
+
+```javascript
+(previousState, action) => newState
+```
+
+If you were to reverse the parameters in a reducer...
+
+```javascript
+(action, previousState) => newState
+```
+
+and then [Schönfinkel](https://en.wikipedia.org/wiki/Currying) it
+
+```javascript
+action => previousState => newState
+```
+
+you'd end up with a **builder** that takes an "action" as its only parameter
+
+###Initialization with Constant Function Builders
 
 It's often useful to set a state rather than modify it. In this case, we
 can use a constant function.
@@ -201,10 +221,10 @@ state.set(one);//1
 state.set(one);//1
 ```
 
-We can create constant function builders as well.
+We can create constant function **builders** as well.
 
 ```javascript
-var constant  = a => () => a;
+var constant  = a => _ => a;
 var one       = constant(1);//This is equivalent to "one" defined above.
 var state     = new Understate({});
 state.subscribe(log);
@@ -215,12 +235,12 @@ state.set(constant(1));//1
 
 ###Using Builders
 
-Using different types of builders allows us to elegantly express how we modify an application's state.
+Using different types of **builders** allows us to elegantly express how we modify an application's state.
 
 ```javascript
 //CounterApplication.js
 import Understate from 'Understate';
-var log       = value => console.log(value);
+var log = value => console.log(value);
 //Builders
 var constant  = a => _ => a;
 var adder     = a => b => b + a;
@@ -238,7 +258,7 @@ counter.set(adder(2));//3
 ```javascript
 //messageApplicatiopn.js
 import Understate from 'Understate';
-var log         = value => console.log(value);
+var log = value => console.log(value);
 //Builders
 var constant    = a => _ => a;
 var addMessage  = message => messages => messages.concat(message);
@@ -255,13 +275,13 @@ messages.set(addMessage('John.'));//['Hello', 'there', 'John.']
 
 ##Routers
 
-The final piece of the puzzle is the *router*. It's job is to take "action" from another component in the application, and return a mutator function to be applied to the current state. It does this by selecting a builders based on an action and extracting parameters from that action.
+The final piece of the puzzle is the **router**. It's job is to take "action" from another component in the application, and return a **mutator** function to be applied to the current state. It does this by selecting a **builder** based on an "action" and extracting parameters from that "action".
 
-Routers, strictly speaking, are builders, as they take in a parameter, "action", and return a mutator function. They are still; however, a useful abstraction when it comes to deciding how to handle updates.
+Strictly speaking, **routers** are **builders**, as they take in a parameter, "action", and return a **mutator** function. They are still; however, a useful abstraction when it comes to deciding how to handle updates.
 
 ###Signature
 
-A router should have the following signature:
+A **router** should have the following signature:
 
 ```javascript
 action => state => {/*some combination of closure, "action parameters, and "state"*/};
@@ -364,43 +384,53 @@ while((action = actions.shift())) update(action);
 //-1
 //0
 ```
-
 ###Redux Comparison
 
 ####Actions
 
-Actions are similar, but are less flexible for Redux
+Actions are similar, but are less flexible in Redux
+
+
+Setting state using an "action" -- Here, the "action" mustn't be of any specific format -- its schema is defined by how the router interprets it
+
 
 ```javascript
-//Setting state using an action : Here, the action mustn't be of any specific format -- its schema is defined by how the router interprets it
 Understate#.set(router(action));
-//
+```
 
-//Setting state in Redux using an action : Here, an action is a loosely formatted JSON object with a mandatory "type" attribute
+Setting state in Redux using an action -- Here, an action is a loosely formatted JSON object with a mandatory "type" attribute
+
+```javascript
 Redux#store.dispatch(action);
 ```
 
 ####Reducers
 
-Routers/Builders Are Essentially Reducers from Redux that have been abstracted out of the core library.
+**Routers/builders** are essentially reducers from Redux that have been abstracted out of the core library.
+
+Recall the function signature a **router**:
 
 ```javascript
-//Recall the function signature a router
-action => state => {/*some combination of closure, "action parameters, and "state"*/};
 
-//This is the same signature as a Redux reducer, who's first had it's parameters reversed, and then had Schönfinkeling applied
+action => state => {/*some combination of closure, "action parameters, and "state"*/};
+```
+
+This is essentially the same signature as a Redux reducer, who's first had it's parameters reversed, and then had Schönfinkeling applied.
+
+```javascript
 action => previousState => newState
 ```
 
-##API
-This API Is written for ECMASCRIPT 6.0 standard. It makes no assumptions about the running environment of the application.
+##Application Programming Interface
 
-###import
+This API is written for ECMASCRIPT 6 (2015). It makes no assumptions about the running environment of the application.
+
+###Import
 ```javascript
 import Understate from 'Understate';
 ```
 
-###Consturor new Understate({initial:any=undefined, index:boolean=false});
+###Consturor -- new Understate({initial:any=undefined, index:boolean=false});
 
 Create new Understate instance
 
@@ -447,6 +477,14 @@ state.set().then((state, id)=>console.log(id, state));
 
 Same as Understate#set (See above), but returns the original object. Useful for chaining.
 
+```javascript
+state
+  .s(/*first mutator*/)
+  .s(/*second mutator*/)
+  .s(/*third mutator*/);
+```
+
+Note: There is no guarantee about the order in which these chained methods are executed.
 
 ####Understate#id();
 
@@ -525,5 +563,14 @@ state.subscribe(log);
 state.subscribe(log);
 state.subscribe(log);
 ```
-
 as each 'log' is the same object
+
+Note: Due to the set-based implementation, there is no guarantee as to the order
+in which subscriptions are called.
+
+```javascript
+state.subscribe(state=>console.log('Or does this?'));
+state.subscribe(state=>console.log('Does this happen first?'));
+state.set(/*some mutator*/);
+//(Might Log: 'Does this happen first?' 'Or does this?')
+```

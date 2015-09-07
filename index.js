@@ -15,10 +15,9 @@ var id = function(data){
  * @config {boolean} [index=false] -- if true, states will be automatically indexed upon update
  */
 var Understate = function({initial=undefined, index=false}){
-  var _state = initial;
-  this._getState = _=>_state;
-  this._setState = _=>_state = _;
-  var _id;
+  var _state = initial, _id;
+  this._getState = _ => _state;
+  this._setState = _ => _state = _;
   this._getId = _=>_id;
   this._setId = _=>_id = _;
   this._setId(id(this._getState()));
