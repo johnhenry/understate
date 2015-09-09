@@ -14,14 +14,15 @@ var id = function(data){
  * @config {*any} [initial=undefined] -- the initial state of the instance.
  * @config {boolean} [index=false] -- if true, states will be automatically indexed upon update
  */
-var Understate = function({initial=undefined, index=false}){
+var Understate = function({initial=undefined, index=false, asynchronous=false}){
   var _state = initial, _id;
   this._getState = _ => _state;
   this._setState = _ => _state = _;
   this._getId = _=>_id;
   this._setId = _=>_id = _;
   this._setId(id(this._getState()));
-  this._index = index;
+  this._index = !!index;
+  this._asynchronous = !!asynchronous;
   this._subscriptions = new Set();
   this._indexed = new Map();
   if(this._index) this._indexed.set(this._getId(),this._getState());
@@ -34,26 +35,34 @@ var Understate = function({initial=undefined, index=false}){
  * @return {Promise} -- A promise resolved with the current state.
  */
 Understate.prototype.set =
-function(mutator, index=undefined){
-  // this._state = mutator(this._state);
-  // this._id = id(this._state);
-  this._setState(mutator(this._getState()));
-  this._setId(id(this._getState()));
-
+function(mutator, index=undefined, asynchronous=undefined){
   var self = this;
-  return new Promise((resolve, reject) => {
-    var result;
-    if(!!index || (index !== false && self._index)){
-      result = Object.create(null);
-      result.id = self._getId();
-      result.state = self._getState();
-      self._indexed.set(result.id, self._getState());
-      self._subscriptions.forEach((subscription) => subscription(result.state, result.id));
+  var newState = [mutator(self._getState())];
+  asynchronous = asynchronous || (asynchronous !== false && self._asynchronous);
+  index  = index || (index !== false && self._index);
+  return new Promise((resolve, reject)=>{
+    if(asynchronous){
+      return newState[0].then(newState=>{
+        newState = [newState];
+        this._setState(newState[0]);
+        this._setId(id(self._getState()));
+        if(index){
+          self._indexed.set(self._getId(), self._getState());
+          newState.push(self._getId());
+        };
+        self._subscriptions.forEach(sub=>sub.apply(self, newState));
+        return resolve.apply(self, newState);
+      }).catch(reject);
     }else{
-      result = this._getState();
-      this._subscriptions.forEach((subscription) => subscription(result));
-    };
-    return resolve(result);
+      this._setState(newState[0]);
+      this._setId(id(self._getState()));
+      if(index){
+        self._indexed.set(self._getId(), self._getState());
+        newState.push(self._getId());
+      }
+      self._subscriptions.forEach(sub=>sub.apply(self, newState));
+      return resolve.apply(self, newState);
+    }
   });
 }
 
@@ -63,8 +72,8 @@ function(mutator, index=undefined){
  * @param {boolean} [index=false] -- if true, the updated state will be indexed by it's current id
  * @return {Reinstate} -- The original reinstate instance
  */
-Understate.prototype.s = function(mutator, index=false){
-  this.set(mutator);
+Understate.prototype.s = function(mutator, index=false, asynchronous=false){
+  this.set(mutator, index, asynchronous);
   return this;
 }
 /**
@@ -74,7 +83,7 @@ Understate.prototype.s = function(mutator, index=false){
  */
 Understate.prototype.get =
 function(id = false){
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     if(id === false) return resolve(this._getState(), this._getId());
     resolve(this._indexed.get(id));
   });

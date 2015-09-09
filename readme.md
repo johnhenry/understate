@@ -434,6 +434,42 @@ while((action = actions.shift())) update(action);
 //-1
 //0
 ```
+
+##Asynchronous Mutators
+
+You can modify an Understate instances at creation to take **asynchronous mutators** by passing a truthy "asynchronous" flag to the config function. Like normal (synchronous) **mutators** these functions take a state as an argument. Instead of returning a modified state; however, they return a promise resolved with the modified state.
+
+Note: we can pass a third flag to set to override the "asynchronous flag"
+
+```javascript
+var state = new Understate({initial:0, asynchronous:true});
+var log = value => console.log(value);
+//Builders
+var constant    = a => _ => a;
+var addMessageAsync  = message => messages => new Promise((resolve, reject)=>{
+  if(Math.random() < 0.25) return reject(new Error('Simulated Async Failure'));
+  return setTimeout(()=>resolve(messages.concat(message)), 1000);
+});
+//Mutators
+var empty       = constant([]);
+//App
+var messages    = new Understate({asynchronous:true});
+messages.subscribe(log);
+messages.set(empty, undefined, false);
+messages.set(addMessageAsync('Hello'))
+  .then(_=>messages.set(addMessageAsync('there'))
+  .then(_=>messages.set(addMessageAsync('John.'))))
+.catch(log);
+//[]
+//['Hello']
+//['Hello', 'there']
+//['Hello', 'there', 'John.']
+//OR Maybe...
+//[Error: Simulated Async Failure]
+```
+
+
+
 ###Redux Comparison
 
 ####Actions
