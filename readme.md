@@ -119,6 +119,8 @@ var id = state.id(true);
 state.get(id).then(log);//1
 ```
 
+Indexation is a good reason to consider immutability in you application. Using **mutators** (below) that return modified copies of your state without modifying the original ensures that each id points to a uniquely identifiable object.
+
 ##Mutators
 
 **Mutator** functions SHOULD be pure functions (they have no side effects) that take in a state and return an updated copy of that state without modifying the original (they respect immutability). With that said, these ideas are pretty much programmatically unenforceable, so if you wish to follow this convention, you'll have to take special care to enforce these properties upon your code yourself.
@@ -439,7 +441,7 @@ while((action = actions.shift())) update(action);
 
 You can modify an Understate instances at creation to take **asynchronous mutators** by passing a truthy "asynchronous" flag to the config function. Like normal (synchronous) **mutators** these functions take a state as an argument. Instead of returning a modified state; however, they return a promise resolved with the modified state.
 
-Note: we can pass a third flag to set to override the "asynchronous flag"
+Note: we can pass a third flag to "set" method to override the "asynchronous flag"
 
 ```javascript
 var state = new Understate({initial:0, asynchronous:true});
@@ -516,24 +518,30 @@ This API is written for ECMASCRIPT 6 (2015). It makes no assumptions about the r
 import Understate from 'Understate';
 ```
 
-###Consturor -- new Understate({initial:any=undefined, index:boolean=false});
+###Consturor -- new Understate({initial:any=undefined, index:boolean=false, asynchronous:boolean=false});
 
-Create new Understate instance
+Create a new Understate instance
 
 ```javascript
 var state = new Understate({});
 ```
 
-Create new Understate instance with an initial value
+Create a new Understate instance with an initial value
 
 ```javascript
 var state = new Understate({initial:/*sone initial value*/});
 ```
 
-Create new Understate that indexes state by default
+Create a new Understate instance that indexes state by default
 
 ```javascript
 var state = new Understate({index:true});
+```
+
+Create a new Understate instance that expects asynchronous mutators.
+
+```javascript
+var state = new Understate({asynchronous:true});
 ```
 
 ###Instance Methods
@@ -550,7 +558,7 @@ var quoter = state => '"' + String() + '"';
 state.set(quoter).then(state=>console.log(state));
 ```
 
-####Understate#set(mutator:function, index:boolean);
+####Understate#set(mutator:function, index:boolean=#index, asynchronous:boolean=#index);
 
 Update the internal state of an Understate instance with a mutator function, index it, and pass it's id along with state in the promise resolution.
 
@@ -559,7 +567,14 @@ var quoter = state => '"' + String() + '"';
 state.set(quoter, true).then((state, id)=>console.log(id, state));
 ```
 
-####Understate#s(...);
+Update the internal state of an Understate instance with an asynchronous mutator function, index it, and pass it's id along with state in the promise resolution.
+
+```javascript
+var promiseMutator = state => new Promise(_=>_(state));
+state.set(promiseMutator, undefined, true).then(state=>console.log(state));
+```
+
+####Understate#s(mutator:function, index:boolean=#index, asynchronous:boolean=#index);
 
 Same as Understate#set (See above), but returns the original object for chaining.
 

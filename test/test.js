@@ -47,7 +47,7 @@ import {getStorage, setLatest, LATESTID} from './storage';
   messages.set(addMessageAsync('Hello'))
     .then(_=>messages.set(addMessageAsync('there'))
     .then(_=>messages.set(addMessageAsync('John.'))))
-  .catch(log);
+  .catch(log).catch(log);
   //[]
   //['Hello']
   //['Hello', 'there']
