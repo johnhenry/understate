@@ -29,9 +29,7 @@ import {getStorage, setLatest, LATESTID} from './storage';
   .s(add(9)).unsubscribe();//Original Instance
 }
 //Test2-------------------------------------------------------------------------
-
 {
-  var state = new Understate({initial:0, asynchronous:true});
   var log = value => console.log(value);
   //Builders
   var constant    = a => _ => a;
@@ -42,8 +40,9 @@ import {getStorage, setLatest, LATESTID} from './storage';
   //Mutators
   var empty       = constant([]);
   //App
-  var messages    = new Understate({asynchronous:true, initial:[]});
+  var messages    = new Understate({asynchronous:true});
   messages.subscribe(log);
+  messages.set(empty,{asynchronous:false});
   messages.set(addMessageAsync('Hello'))
     .then(_=>messages.set(addMessageAsync('there'))
     .then(_=>messages.set(addMessageAsync('John.'))))

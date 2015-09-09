@@ -27,8 +27,6 @@ var state = new Understate({});
 state.get().then(log);//undefined
 ```
 
-Note: I'm passing an empty config object here into the constructor. I don't think this _should_ be necessary, but, with my current es6 transplier, my test throws an error without it. No big deal, maybe we'll come back to this somewhere down the line...
-
 You can also pass an initial value when creating a Understate object.
 
 ```javascript
@@ -78,25 +76,25 @@ log(state.id());//*<ID>
 state.set(increment).then(x=>console.log(state.id()));//*<ID(Different)>
 ```
 
-Passing a second, _truthy_ argument to the **"set"** function will cause its id to be passed as a second argument to the function passed to subscribe.
+Passing a _truthy_ "index" config option to the **"set"** function will cause its id to be passed as a second argument to the function passed to subscribe.
 
 ```javascript
 var logId     = (value, id) => console.log(`${id}:${value}`);
 var state     = new Understate({initial:0});
 state.subscribe(logId);
-state.set(increment, true);//*<ID>:0
-state.set(increment, true);//*<ID>:1
-state.set(increment, true);//*<ID>:2
+state.set(increment, {index:true});//*<ID>:0
+state.set(increment, {index:true});//*<ID>:1
+state.set(increment, {index:true});//*<ID>:2
 ```
 
-In addition, passing a second, _truthy_ argument to the **"set"** function will also cause the Understate object to internally index it's state by id. This id can later be used to access any indexed states by passing it to the **"get"** method.
+Passing a _truthy_ "index" config option to the **"set"** function will also cause the Understate object to internally index it's state by id. This id can later be used to access any indexed states by passing it to the **"get"** method.
 
 ```javascript
 var state     = new Understate({initial:0});
 state.subscribe((value, id) => setTimeout(_=>state.get(id).then(log), 5000));
-state.set(increment, true);//0 (After 5 seconds)
-state.set(increment, true);//1 (After 5 seconds)
-state.set(increment, true);//2 (After 5 seconds)
+state.set(increment, {index:true});//0 (After 5 seconds)
+state.set(increment, {index:true});//1 (After 5 seconds)
+state.set(increment, {index:true});//2 (After 5 seconds)
 ```
 
 Passing a _truthy_ index option to the constructor will cause the set function to automatically index values.
@@ -107,7 +105,7 @@ var state     = new Understate({initial:0, index:true});
 state.subscribe(logId);
 state.set(increment);//*<ID>:0
 state.set(increment);//*<ID>:1
-state.set(increment, false);//undefined:2
+state.set(increment, {index:false});//undefined:2
 ```
 
 If not already indexed, you can index the current state by passing a _truthy_ argument to the id method.
@@ -441,10 +439,9 @@ while((action = actions.shift())) update(action);
 
 You can modify an Understate instances at creation to take **asynchronous mutators** by passing a truthy "asynchronous" flag to the config function. Like normal (synchronous) **mutators** these functions take a state as an argument. Instead of returning a modified state; however, they return a promise resolved with the modified state.
 
-Note: we can pass a third flag to "set" method to override the "asynchronous flag"
+Note: We can pass an "asynchronous" config option to "set" method to temporarily override the "asynchronous" flag
 
 ```javascript
-var state = new Understate({initial:0, asynchronous:true});
 var log = value => console.log(value);
 //Builders
 var constant    = a => _ => a;
@@ -457,16 +454,16 @@ var empty       = constant([]);
 //App
 var messages    = new Understate({asynchronous:true});
 messages.subscribe(log);
-messages.set(empty, undefined, false);
+messages.set(empty,{asynchronous:false});
 messages.set(addMessageAsync('Hello'))
   .then(_=>messages.set(addMessageAsync('there'))
   .then(_=>messages.set(addMessageAsync('John.'))))
-.catch(log);
+.catch(log).catch(log);
 //[]
 //['Hello']
 //['Hello', 'there']
 //['Hello', 'there', 'John.']
-//OR Maybe...
+//OR
 //[Error: Simulated Async Failure]
 ```
 
@@ -547,34 +544,32 @@ var state = new Understate({asynchronous:true});
 ###Instance Methods
 
 These are methods attached to an instance.
-For this section, you may assume "state" is an available insance of Understate.
+For this section, you may assume "state" is an available instance of Understate.
 
-####Understate#set(mutator:function);
+####Understate#set(mutator:function, {index:boolean=instance#index, asynchronous:boolean=instance#index});
 
-Update the internal state of an Understate instance with a *mutator* (see above) function.
+Update the internal state of an Understate instance with a **mutator** (see above) function.
 
 ```javascript
 var quoter = state => '"' + String() + '"';
 state.set(quoter).then(state=>console.log(state));
 ```
 
-####Understate#set(mutator:function, index:boolean=#index, asynchronous:boolean=#index);
-
 Update the internal state of an Understate instance with a mutator function, index it, and pass it's id along with state in the promise resolution.
 
 ```javascript
 var quoter = state => '"' + String() + '"';
-state.set(quoter, true).then((state, id)=>console.log(id, state));
+state.set(quoter, {index:true}).then((state, id)=>console.log(id, state));
 ```
 
 Update the internal state of an Understate instance with an asynchronous mutator function, index it, and pass it's id along with state in the promise resolution.
 
 ```javascript
 var promiseMutator = state => new Promise(_=>_(state));
-state.set(promiseMutator, undefined, true).then(state=>console.log(state));
+state.set(promiseMutator, {asynchronous:true}).then(state=>console.log(state));
 ```
 
-####Understate#s(mutator:function, index:boolean=#index, asynchronous:boolean=#index);
+####Understate#s(mutator:function, {index:boolean=instance#index, asynchronous:boolean=instance#index});
 
 Same as Understate#set (See above), but returns the original object for chaining.
 
@@ -596,12 +591,12 @@ state.id();
 ```
 Note: this method returns the id directly and not a promise.
 
-####Understate#id(index:string);
+####Understate#id(id:boolean);
 
 Get the id of the current state and also index it if not already indexed.
 
 ```javascript
-state.id(/*some index*/);
+state.id(true);
 ```
 Note: this method returns the id directly and not a promise.
 
@@ -613,7 +608,7 @@ Retrieve the current state.
 state.get().then(state=>console.log(state));
 ```
 
-####Understate#get(id:boolean);
+####Understate#get(index:string);
 
 Retrieve an indexed state by id.
 

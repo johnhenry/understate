@@ -14,7 +14,12 @@ var id = function(data){
  * @config {*any} [initial=undefined] -- the initial state of the instance.
  * @config {boolean} [index=false] -- if true, states will be automatically indexed upon update
  */
-var Understate = function({initial=undefined, index=false, asynchronous=false}){
+var Understate = function(config={}){
+  config = Object.assign({initial:undefined, index:false, asynchronous:false}, config);
+  var index = config.index;
+  var initial = config.initial;
+  var asynchronous = config.asynchronous;
+
   var _state = initial, _id;
   this._getState = _ => _state;
   this._setState = _ => _state = _;
@@ -35,7 +40,12 @@ var Understate = function({initial=undefined, index=false, asynchronous=false}){
  * @return {Promise} -- A promise resolved with the current state.
  */
 Understate.prototype.set =
-function(mutator, index=undefined, asynchronous=undefined){
+function(mutator, config={}){
+  if(typeof mutator !== 'function') throw new Error("Mutator Must be a Function.");
+  config = Object.assign({initial:undefined, asynchronous:undefined}, config);
+  var index = config.index;
+  var asynchronous = config.asynchronous;
+
   var self = this;
   var newState = [mutator(self._getState())];
   asynchronous = asynchronous || (asynchronous !== false && self._asynchronous);
@@ -72,8 +82,8 @@ function(mutator, index=undefined, asynchronous=undefined){
  * @param {boolean} [index=false] -- if true, the updated state will be indexed by it's current id
  * @return {Reinstate} -- The original reinstate instance
  */
-Understate.prototype.s = function(mutator, index=false, asynchronous=false){
-  this.set(mutator, index, asynchronous);
+Understate.prototype.s = function(mutator, config={}){
+  this.set(mutator, config);
   return this;
 }
 /**
@@ -113,8 +123,6 @@ function(subscription){
     return original;
   }
   return pointer;
-
-
 }
 /**
  * Subscribe -- Subscribe to updates the reinstate instances updates
