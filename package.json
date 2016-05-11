@@ -13,7 +13,7 @@
     "start": "echo \"Error: no start specified\" && exit 1",
     "test": "mocha test/es6testrunner.js",
     "rollup": "node ./node_modules/rollup/bin/rollup ./index.js --output dist/index.js --format cjs",
-    "postinstall": "npm run rollup",
+    "postinstall": "npm run rollup"
   },
   "repository": {
     "type": "git",
