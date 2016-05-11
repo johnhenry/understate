@@ -5,7 +5,7 @@ This was inspired by [Redux](https://github.com/rackt/redux/) along with another
 
 Understate aims to be similar to Redux, but with some parts abstracted out of the core library using higher-order functional concepts.
 
-In addition, Understate provides a mechanism for indexing and retrieve states by id.
+In addition, Understate provides a mechanism for indexing and retrieve states by *id*.
 
 Understate does not enforce immutability. However, using immutable objects as values for state has number advantages related to performance, correctness, and reasonability. Consider using it in conjunction with a library such as [Immutable](https://github.com/facebook/immutable-js/).
 
@@ -17,8 +17,7 @@ Wait, what?!
 
 ###Basic Usage
 
-When you first create an Understate object, it has an initial internal state.
-That can be accesses via the "get" method.
+When you first create an Understate object, it has an initial internal state that can be accesses via the "get" method.
 
 ```javascript
 import Understate from 'Understate';
@@ -121,7 +120,7 @@ Indexation is a good reason to consider immutability in you application. Using *
 
 ##Mutators
 
-**Mutator** functions SHOULD be pure functions (they have no side effects) that take in a state and return an updated copy of that state without modifying the original (they respect immutability). With that said, these ideas are pretty much programmatically unenforceable, so if you wish to follow this convention, you'll have to take special care to enforce these properties upon your code yourself.
+**Mutator** functions should be pure functions (they have no side effects) that take in a state and return an updated copy of that state without modifying the original (they respect immutability). With that said, these ideas are pretty much programmatically unenforceable, so if you wish to follow this convention, you'll have to take special care to enforce these properties upon your code yourself.
 
 ###Signature
 
@@ -133,7 +132,7 @@ state => {/*some combination of closure and "state"*/};
 
 ###Example
 
-This mutator returns the state incrimented by 1
+This mutator returns the state incremented by 1
 
 ```javascript
 var increment = state => state + 1;
@@ -210,10 +209,10 @@ you'd end up with a **builder** that takes an "action" as its only parameter
 ###Initialization with Constant Function Builders
 
 It's often useful to set a state rather than modify it. In this case, we
-can use a constant function.
+can use a function that returns a constant.
 
 ```javascript
-var one   = x => 1;
+var one   = _ => 1;
 var state = new Understate({});
 state.subscribe(log);
 state.set(one);//1
@@ -296,9 +295,8 @@ messages.set(addMessageLog('Hello'));//'Hello received.'
 messages.set(addMessageLog('there'));//'there received.'
 messages.set(addMessageLog('John.'));//'John. received.'
 ```
-**Decorators** take in functions return similar functions with enhanced functionality. We can use them to make this pattern more succinct.
 
-**Decorators** should take a function as one of it's arguments and return a function with the same signature. We apply them to **builder** functions
+**Decorators** take in functions return similar functions with enhanced functionality.  They should take a function as one of it's arguments and return a function with the same signature. We apply them to **builder** functions.
 
 ```javascript
 //messageApplicatiopn.js
@@ -321,7 +319,7 @@ messages.set(addMessage('there'));//'there received.'
 messages.set(addMessage('John.'));//'John. received.'
 ```
 
-Note: Ecmascript 7 (2016) has a similar new language feature, also called "decorators", that work in a similar way, but can only be applied to class methods.
+Note: ECMAcript 8 (2017) has a similar new language feature, also called "decorators", that work in a similar way, but can only be applied to class methods.
 
 ##Routers
 
@@ -407,8 +405,8 @@ import Understate from 'Understate';
 import {mapRouter as router} from './sampleRouters.js';
 var state = new Understate({initial:0});
 state.subscribe(state => console.log(state));
-var update = action => state.set(router(action);
-export default update
+var update = action => state.set(router(action));
+export default update;
 ```
 
 ```javascript
@@ -640,7 +638,7 @@ The current implementation uses tracks subscriptions using a Set, resulting in a
 The following would result in multiple subscriptions:
 
 ```javascript
-var logEmitter = _ => state=>console.log(state)
+var logEmitter = _ => state=>console.log(state);
 state.subscribe(logEmitter());
 state.subscribe(logEmitter());
 state.subscribe(logEmitter());

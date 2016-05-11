@@ -1,3 +1,5 @@
+'use strict';
+
 //Library=======================================================================
 /**
  * ID Function - Emits and id
@@ -5,7 +7,7 @@
  * @param {integer} -- data The id of the employee.
  * @return {string} -- An id String.
  */
-const id = function(data){
+var id = function(data){
   return String(Math.random()).substr(2, 15);
 }
 /**
@@ -20,7 +22,7 @@ var Understate = function(config={}){
   var initial = config.initial;
   var asynchronous = config.asynchronous;
 
-  let _state = initial, _id;
+  var _state = initial, _id;
   this._getState = _ => _state;
   this._setState = _ => _state = _;
   this._getId = _=>_id;
@@ -134,4 +136,5 @@ function(index=false){
   if(index) this._indexed.set(this._id, this._state);
   return this._id;
 };
-export default Understate;
+
+module.exports = Understate;
