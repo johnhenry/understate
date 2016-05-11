@@ -7,7 +7,7 @@
  * @param {integer} -- data The id of the employee.
  * @return {string} -- An id String.
  */
-var id = function(data){
+const id = function(data){
   return String(Math.random()).substr(2, 15);
 }
 /**
@@ -16,13 +16,11 @@ var id = function(data){
  * @config {*any} [initial=undefined] -- the initial state of the instance.
  * @config {boolean} [index=false] -- if true, states will be automatically indexed upon update
  */
-var Understate = function(config={}){
-  config = Object.assign({initial:undefined, index:false, asynchronous:false}, config);
-  var index = config.index;
-  var initial = config.initial;
-  var asynchronous = config.asynchronous;
-
-  var _state = initial, _id;
+var Understate = function({
+  initial=undefined,
+  index=false,
+  asynchronous=false}={}){
+  let _state = initial, _id;
   this._getState = _ => _state;
   this._setState = _ => _state = _;
   this._getId = _=>_id;

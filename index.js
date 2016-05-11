@@ -14,12 +14,10 @@ const id = function(data){
  * @config {*any} [initial=undefined] -- the initial state of the instance.
  * @config {boolean} [index=false] -- if true, states will be automatically indexed upon update
  */
-var Understate = function(config={}){
-  config = Object.assign({initial:undefined, index:false, asynchronous:false}, config);
-  var index = config.index;
-  var initial = config.initial;
-  var asynchronous = config.asynchronous;
-
+var Understate = function({
+  initial=undefined,
+  index=false,
+  asynchronous=false}={}){
   let _state = initial, _id;
   this._getState = _ => _state;
   this._setState = _ => _state = _;

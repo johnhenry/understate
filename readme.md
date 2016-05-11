@@ -22,7 +22,7 @@ When you first create an Understate object, it has an initial internal state tha
 ```javascript
 import Understate from 'Understate';
 var log   = value => console.log(value);
-var state = new Understate({});
+var state = new Understate();
 state.get().then(log);//undefined
 ```
 
@@ -213,7 +213,7 @@ can use a function that returns a constant.
 
 ```javascript
 var one   = _ => 1;
-var state = new Understate({});
+var state = new Understate();
 state.subscribe(log);
 state.set(one);//1
 state.set(one);//1
@@ -225,7 +225,7 @@ We can create constant function **builders** as well.
 ```javascript
 var constant  = a => _ => a;
 var one       = constant(1);//This is equivalent to "one" defined above.
-var state     = new Understate({});
+var state     = new Understate();
 state.subscribe(log);
 state.set(one);//1
 state.set(one);//1
@@ -247,7 +247,7 @@ var adder     = a => b => b + a;
 var zero      = constant(0);
 var increment = adder(1);
 //App
-var counter   = new Understate({});
+var counter   = new Understate();
 counter.subscribe(log);
 counter.set(zero);//0
 counter.set(increment);//1
@@ -265,7 +265,7 @@ var logger = message => {log(message); return message};
 //Mutators
 var empty       = constant([]);
 //App
-var messages    = new Understate({});
+var messages    = new Understate();
 messages.subscribe(log);
 messages.set(empty);//[]
 messages.set(addMessage('Hello'));//['Hello']
@@ -289,7 +289,7 @@ var addMessageLog  = message => messages => messages.concat(receiveLog(message))
 //Mutators
 var empty       = constant([]);
 //App
-var messages    = new Understate({});
+var messages    = new Understate();
 messages.set(empty);//'Setting constant:'
 messages.set(addMessageLog('Hello'));//'Hello received.'
 messages.set(addMessageLog('there'));//'there received.'
@@ -312,7 +312,7 @@ var addMessage  = logInput(message => messages => messages.concat(message), '', 
 //Mutators
 var empty       = constant([]);
 //App
-var messages    = new Understate({});
+var messages    = new Understate();
 messages.set(empty);//'Setting constant:'
 messages.set(addMessage('Hello'));//'Hello received.'
 messages.set(addMessage('there'));//'there received.'
@@ -518,7 +518,7 @@ import Understate from 'Understate';
 Create a new Understate instance
 
 ```javascript
-var state = new Understate({});
+var state = new Understate();
 ```
 
 Create a new Understate instance with an initial value
