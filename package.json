@@ -11,22 +11,26 @@
   "main": "./dist/index.js",
   "scripts": {
     "start": "echo \"Error: no start specified\" && exit 1",
-    "test": "mocha test/es6testrunner.js",
-    "rollup": "node ./node_modules/rollup/bin/rollup ./index.js --output dist/index.js --format cjs"
+    "test": "docker run -v $(pwd):/PROJECT --rm understate-test-087932200",
+    "set": "node -e \"var target = './package.json';\nvar pkg = require(target);\nvar value = process.argv[process.argv.length - 1];\nvar p = pkg;\nfor(var n = 1; n < process.argv.length;n++){\n    var key = process.argv[n];\n      if(n >= process.argv.length - 2){\n          p[key] = value;\n          break;\n        }else{\n          p[key] = p[key] || {};\n          p = p[key];\n        }\n      };\nrequire('fs').writeFileSync(target, (JSON.stringify(pkg, null, '  ')));\"",
+    "get": "node -e \"var pkg = require('./package.json');\nvar p = pkg;\nvar result;\nvar keys = [];\nfor(var n = 1; n<process.argv.length;n++){  key = process.argv[n];\n  try{\n    result = p[key];\n    p = pkg[key];\n    keys.push(key);\n  }catch(e){\n    console.error('key: ' + keys.join(' -> ') + ' is not an object' );\n    process.exit(1);\n  }\n}\nconsole.log(result);\"",
+    "delete": "node -e \"var target = './package.json';\nvar pkg = require(target);\nvar result;\nvar p = pkg;\nfor(var n = 1; n < process.argv.length;n++){\n      var key = process.argv[n];\n      if(n >= process.argv.length - 1){\n          result = p[key];\n\t\t\t\t\tdelete p[key];\n          break;\n        }else{\n          p[key] = p[key] || {};\n          p = p[key];\n        }\n      };\nrequire('fs').writeFileSync(target, (JSON.stringify(pkg, null, '  ')));\nconsole.log(result);\"",
+    "build-images": "docker build -t understate-lint-087932200 scripts/lint && docker build -t understate-compile-087932200 scripts/compile && docker build -t understate-demo-087932200 scripts/demo && docker build -t understate-test-087932200 scripts/test && docker build -t understate-deploy-087932200 scripts/deploy",
+    "remove-images": "docker rmi $(docker images -aq understate-*-087932200)",
+    "lint": "docker run -v $(pwd):/PROJECT --rm understate-lint-087932200",
+    "lint-win": "docker run -v %cd%:/PROJECT --rm understate-lint-087932200",
+    "compile": "docker run -v $(pwd):/PROJECT --rm understate-compile-087932200",
+    "compile-win": "docker run -v %cd%:/PROJECT --rm understate-compile-087932200",
+    "demo": "docker run -v $(pwd):/PROJECT --rm understate-demo-087932200",
+    "demo-win": "docker run -v %cd%:/PROJECT --rm understate-demo-087932200",
+    "test-win": "docker run -v %cd%:/PROJECT --rm understate-test-087932200",
+    "deploy": "docker run -v $(pwd):/PROJECT --rm understate-deploy-087932200",
+    "deploy-win": "docker run -v %cd%:/PROJECT --rm understate-deploy-087932200"
   },
   "repository": {
     "type": "git",
     "url": "git://github.com/johnhenry/understate.git"
   },
   "author": "John Henry",
-  "license": "ISC",
-  "devDependencies": {
-    "babel": "^5.8.23",
-    "mocha": "^2.4.5",
-    "rollup": "^0.26.2"
-  },
-  "dependencies": {
-    "rollup": "^0.26.2",
-    "babel": "^5.8.23"
-  }
+  "license": "ISC"
 }
