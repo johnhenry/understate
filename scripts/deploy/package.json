@@ -1,0 +1,12 @@
+{
+  "name": "deploy",
+  "version": "0.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "deploy": "echo \"No deploy script defined\" && exit 0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

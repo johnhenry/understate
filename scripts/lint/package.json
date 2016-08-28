@@ -1,0 +1,11 @@
+{
+  "name": "lint",
+  "version": "0.0.0",
+  "scripts": {
+    "lint": "eslint -c .eslintrc.json PROJECT/src"
+  },
+  "dependencies": {
+    "eslint": "^3.4.0",
+    "eslint-plugin-react": "^6.1.2"
+  }
+}

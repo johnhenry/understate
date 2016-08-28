@@ -21,7 +21,7 @@ var setLatest = function(id, state){
   setStorage(id, state);
   setStorage(LATESTID, id);
 }
-export default {
+export {
   getStorage,
   setStorage,
   setLatest,

@@ -1,0 +1,10 @@
+{
+  "name": "compile",
+  "version": "0.0.0",
+  "scripts": {
+    "compile": "rollup PROJECT/src/index.js --output PROJECT/dist/index.js --format cjs"
+  },
+  "dependencies":{
+    "rollup": "^0.26.2"
+  }
+}
