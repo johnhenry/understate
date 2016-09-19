@@ -631,7 +631,7 @@ state.subscribe(state=>console.log(state)).unsubscribe();
 ```
 #####Subscribe Implementation Notes
 
-The current implementation uses tracks subscriptions using a Set, resulting in a few "gotchas":
+The current implementation tracks subscriptions using a [Set](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set), resulting in a few "gotchas":
 
 ######Uniqueness
 
