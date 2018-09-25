@@ -1,4 +1,4 @@
-#Understate
+# Understate
 A simple state manager.
 
 This was inspired by [Redux](https://github.com/rackt/redux/) along with another [old project of mine](https://github.com/johnhenry/polyfill-function).
@@ -9,13 +9,13 @@ In addition, Understate provides a mechanism for indexing and retrieve states by
 
 Understate does not enforce immutability. However, using immutable objects as values for state has number advantages related to performance, correctness, and reasonability. Consider using it in conjunction with a library such as [Immutable](https://github.com/facebook/immutable-js/).
 
-##About
+## About
 Understate works by creating objects that ingest *mutator* functions to update their *internal state*.
 Wait, what?!
 
 ...Okay, let's start over... maybe if we just jump right into it...
 
-###Basic Usage
+### Basic Usage
 
 When you first create an Understate object, it has an initial internal state that can be accesses via the "get" method.
 
@@ -63,7 +63,7 @@ unsubscriber.unsubscribe();
 state.set(increment);//(Nothing logged)
 ```
 
-###Indexation
+### Indexation
 
 Understate objects track their state internally.
 
@@ -118,11 +118,11 @@ state.get(id).then(log);//1
 
 Indexation is a good reason to consider immutability in you application. Using **mutators** (below) that return modified copies of your state without modifying the original ensures that each id points to a uniquely identifiable object.
 
-##Mutators
+## Mutators
 
 **Mutator** functions should be pure functions (they have no side effects) that take in a state and return an updated copy of that state without modifying the original (they respect immutability). With that said, these ideas are pretty much programmatically unenforceable, so if you wish to follow this convention, you'll have to take special care to enforce these properties upon your code yourself.
 
-###Signature
+### Signature
 
 A **mutator** should have the following function signature:
 
@@ -130,7 +130,7 @@ A **mutator** should have the following function signature:
 state => {/*some combination of closure and "state"*/};
 ```
 
-###Example
+### Example
 
 This mutator returns the state incremented by 1
 
@@ -138,7 +138,7 @@ This mutator returns the state incremented by 1
 var increment = state => state + 1;
 ```
 
-###Redux Comparison
+### Redux Comparison
 
 Setting state using a mutator function in Understate
 
@@ -152,12 +152,12 @@ Setting state using an action object in Redux
 Redux#store.dispatch(action);
 ```
 
-##Builders
+## Builders
 Since a **mutator** function only takes in a state, any modifications that are made to it must be based on its closure.
 
 We can take advantage of this by creating mutation **builder** functions that takes, as arguments, a set of parameters and return **mutators** that use the parameters in its closure.
 
-###Signature
+### Signature
 A **builder** function should have the following function signature:
 
 ```javascript
@@ -166,7 +166,7 @@ A **builder** function should have the following function signature:
 (...parameters) => /*<Mutator>*/;
 ```
 
-###Example
+### Example
 
 ```javascript
 var adder     = y => x => x + y;
@@ -176,17 +176,17 @@ var increment = adder(1);
 // adder(1) = x => x + 1;
 ```
 
-###Redux Comparison
+### Redux Comparison
 
 We can see that a **builder** function and a reducer function from Redux are very similar.
 
-####Builder Function
+#### Builder Function
 
 ```javascript
 (...paramters) => previousState => newState
 ```
 
-####Reducer Function
+#### Reducer Function
 
 ```javascript
 (previousState, action) => newState
@@ -206,7 +206,7 @@ action => previousState => newState
 
 you'd end up with a **builder** that takes an "action" as its only parameter
 
-###Initialization with Constant Function Builders
+### Initialization with Constant Function Builders
 
 It's often useful to set a state rather than modify it. In this case, we
 can use a function that returns a constant.
@@ -232,7 +232,7 @@ state.set(one);//1
 state.set(constant(1));//1
 ```
 
-###Using Builders
+### Using Builders
 
 Using different types of **builders** allows us to elegantly express how we modify an application's state.
 
@@ -273,7 +273,7 @@ messages.set(addMessage('there'));//['Hello', 'there']
 messages.set(addMessage('John.'));//['Hello', 'there', 'John.']
 ```
 
-####Decorators
+#### Decorators
 
 Redux has a concept of _middleware_ used to intercept objects and preform actions such a logging.
 
@@ -321,13 +321,13 @@ messages.set(addMessage('John.'));//'John. received.'
 
 Note: ECMAcript 8 (2017) has a similar new language feature, also called "decorators", that work in a similar way, but can only be applied to class methods.
 
-##Routers
+## Routers
 
 The final piece of the puzzle is the **router**. It's job is to take "action" from another component in the application, and return a **mutator** function to be applied to the current state. It does this by selecting a **builder** based on an "action" and extracting parameters from that "action".
 
 Strictly speaking, **routers** are **builders**, as they take in a parameter, "action", and return a **mutator** function. They are still; however, a useful abstraction when it comes to deciding how to handle updates.
 
-###Signature
+### Signature
 
 A **router** should have the following signature:
 
@@ -338,7 +338,7 @@ action => /*<Mutator>*/;
 ```
 
 
-###Example
+### Example
 
 This is an application that uses a sample router.
 
@@ -433,7 +433,7 @@ while((action = actions.shift())) update(action);
 //0
 ```
 
-##Asynchronous Mutators
+## Asynchronous Mutators
 
 You can modify an Understate instances at creation to take **asynchronous mutators** by passing a truthy "asynchronous" flag to the config function. Like normal (synchronous) **mutators** these functions take a state as an argument. Instead of returning a modified state; however, they return a promise resolved with the modified state.
 
@@ -467,9 +467,9 @@ messages.set(addMessageAsync('Hello'))
 
 
 
-###Redux Comparison
+### Redux Comparison
 
-####Actions
+#### Actions
 
 Actions are similar, but are less flexible in Redux
 
@@ -487,7 +487,7 @@ Setting state in Redux using an action -- Here, an action is a loosely formatted
 Redux#store.dispatch(action);
 ```
 
-####Reducers
+#### Reducers
 
 **Routers/builders** are essentially reducers from Redux that have been abstracted out of the core library.
 
@@ -504,16 +504,16 @@ This is essentially the same signature as a Redux reducer, who's first had it's 
 action => previousState => newState
 ```
 
-##Application Programming Interface
+## Application Programming Interface
 
 This API is written for ECMASCRIPT 6 (2015). It makes no assumptions about the running environment of the application.
 
-###Import
+### Import
 ```javascript
 import Understate from 'Understate';
 ```
 
-###Consturor -- new Understate({initial:any=undefined, index:boolean=false, asynchronous:boolean=false});
+### Consturor -- new Understate({initial:any=undefined, index:boolean=false, asynchronous:boolean=false});
 
 Create a new Understate instance
 
@@ -539,12 +539,12 @@ Create a new Understate instance that expects asynchronous mutators.
 var state = new Understate({asynchronous:true});
 ```
 
-###Instance Methods
+### Instance Methods
 
 These are methods attached to an instance.
 For this section, you may assume "state" is an available instance of Understate.
 
-####Understate#set(mutator:function, {index:boolean=instance#index, asynchronous:boolean=instance#index});
+#### Understate#set(mutator:function, {index:boolean=instance#index, asynchronous:boolean=instance#index});
 
 Update the internal state of an Understate instance with a **mutator** (see above) function.
 
@@ -567,7 +567,7 @@ var promiseMutator = state => new Promise(_=>_(state));
 state.set(promiseMutator, {asynchronous:true}).then(state=>console.log(state));
 ```
 
-####Understate#s(mutator:function, {index:boolean=instance#index, asynchronous:boolean=instance#index});
+#### Understate#s(mutator:function, {index:boolean=instance#index, asynchronous:boolean=instance#index});
 
 Same as Understate#set (See above), but returns the original object for chaining.
 
@@ -580,7 +580,7 @@ state
 
 Note: There is no guarantee about the order in which these chained methods are executed.
 
-####Understate#id();
+#### Understate#id();
 
 Get the id of the current state.
 
@@ -589,7 +589,7 @@ state.id();
 ```
 Note: this method returns the id directly and not a promise.
 
-####Understate#id(id:boolean);
+#### Understate#id(id:boolean);
 
 Get the id of the current state and also index it if not already indexed.
 
@@ -598,7 +598,7 @@ state.id(true);
 ```
 Note: this method returns the id directly and not a promise.
 
-####Understate#get();
+#### Understate#get();
 
 Retrieve the current state.
 
@@ -606,7 +606,7 @@ Retrieve the current state.
 state.get().then(state=>console.log(state));
 ```
 
-####Understate#get(index:string);
+#### Understate#get(index:string);
 
 Retrieve an indexed state by id.
 
@@ -614,7 +614,7 @@ Retrieve an indexed state by id.
 state.get(/*some index*/).then(state=>console.log(state));
 ```
 
-####Understate#subscribe(subscriber:function);
+#### Understate#subscribe(subscriber:function);
 
 Subscribe to changes in a state
 
@@ -622,18 +622,18 @@ Subscribe to changes in a state
 state.subscribe(state=>console.log(state));
 ```
 
-#####Understate#subscribe(subscriber:function).unsubscribe();
+##### Understate#subscribe(subscriber:function).unsubscribe();
 
 The object returned by "subscribe" is linked to the original via prototype-chain. Methods called on the original will affect the new object and vice-versa. In addition, the returned object has an "unsubscribe" method that cancels further updates from the original function passed to "subscribe".
 
 ```javascript
 state.subscribe(state=>console.log(state)).unsubscribe();
 ```
-#####Subscribe Implementation Notes
+##### Subscribe Implementation Notes
 
 The current implementation tracks subscriptions using a [Set](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set), resulting in a few "gotchas":
 
-######Uniqueness
+###### Uniqueness
 
 The following would result in multiple subscriptions:
 
@@ -654,7 +654,7 @@ state.subscribe(log);
 ```
 as each 'log' is the same object.
 
-######Order
+###### Order
 
 There is no guarantee as to the order in which subscriptions are called.
 
