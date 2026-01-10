@@ -504,163 +504,433 @@ This is essentially the same signature as a Redux reducer, who's first had it's 
 action => previousState => newState
 ```
 
-## Application Programming Interface
+## API Reference
 
-This API is written for ECMASCRIPT 6 (2015). It makes no assumptions about the running environment of the application.
+This API is designed for ECMAScript 6 (2015) and above. It makes no assumptions about the running environment of your application.
 
-### Import
+### Installation & Import
+
 ```javascript
 import Understate from 'Understate';
 ```
 
-### Consturor -- new Understate({initial:any=undefined, index:boolean=false, asynchronous:boolean=false});
+---
 
-Create a new Understate instance
+## Constructor
 
+### `new Understate(config)`
+
+Creates a new Understate instance with optional configuration.
+
+#### Parameters
+
+- **config** `Object` (optional) - Configuration object with the following properties:
+  - **initial** `any` (default: `undefined`) - The initial state value
+  - **index** `boolean` (default: `false`) - Whether to automatically index state changes by ID
+  - **asynchronous** `boolean` (default: `false`) - Whether to use asynchronous mutators by default
+
+#### Returns
+
+- `Understate` - A new Understate instance
+
+#### Examples
+
+Create an instance with default settings:
 ```javascript
-var state = new Understate();
+const state = new Understate();
 ```
 
-Create a new Understate instance with an initial value
-
+Create an instance with an initial value:
 ```javascript
-var state = new Understate({initial:/*sone initial value*/});
+const counter = new Understate({ initial: 0 });
+const todos = new Understate({ initial: [] });
+const user = new Understate({ initial: { name: 'John', age: 30 } });
 ```
 
-Create a new Understate instance that indexes state by default
-
+Create an instance that automatically indexes state:
 ```javascript
-var state = new Understate({index:true});
+const state = new Understate({
+  initial: { count: 0 },
+  index: true
+});
 ```
 
-Create a new Understate instance that expects asynchronous mutators.
-
+Create an instance for asynchronous operations:
 ```javascript
-var state = new Understate({asynchronous:true});
+const asyncState = new Understate({
+  initial: [],
+  asynchronous: true
+});
 ```
 
-### Instance Methods
+---
 
-These are methods attached to an instance.
-For this section, you may assume "state" is an available instance of Understate.
+## Instance Methods
 
-#### Understate#set(mutator:function, {index:boolean=instance#index, asynchronous:boolean=instance#index});
+All methods are called on an instance of Understate. For the following examples, assume `state` is an instance created with `const state = new Understate()`.
 
-Update the internal state of an Understate instance with a **mutator** (see above) function.
+---
 
+### `state.set(mutator, options)`
+
+Updates the internal state by applying a mutator function to the current state.
+
+#### Parameters
+
+- **mutator** `Function` (required) - A pure function that takes the current state and returns the new state
+  - Signature: `(currentState) => newState`
+  - For asynchronous mode: `(currentState) => Promise<newState>`
+- **options** `Object` (optional) - Configuration object:
+  - **index** `boolean` (default: instance's index setting) - Whether to index this state change
+  - **asynchronous** `boolean` (default: instance's asynchronous setting) - Whether to treat the mutator as asynchronous
+
+#### Returns
+
+- `Promise<newState>` - A promise that resolves with the new state value
+- `Promise<[newState, id]>` - When `index: true`, resolves with state and its ID
+
+#### Examples
+
+Basic state update:
 ```javascript
-var quoter = state => '"' + String() + '"';
-state.set(quoter).then(state=>console.log(state));
+const increment = x => x + 1;
+const state = new Understate({ initial: 0 });
+
+state.set(increment).then(newState => {
+  console.log(newState); // 1
+});
 ```
 
-Update the internal state of an Understate instance with a mutator function, index it, and pass it's id along with state in the promise resolution.
-
+Update with indexing:
 ```javascript
-var quoter = state => '"' + String() + '"';
-state.set(quoter, {index:true}).then((state, id)=>console.log(id, state));
+const addItem = item => items => [...items, item];
+const state = new Understate({ initial: [] });
+
+state.set(addItem('Task 1'), { index: true }).then(([newState, id]) => {
+  console.log(newState); // ['Task 1']
+  console.log(id);       // unique identifier for this state
+});
 ```
 
-Update the internal state of an Understate instance with an asynchronous mutator function, index it, and pass it's id along with state in the promise resolution.
-
+Asynchronous state update:
 ```javascript
-var promiseMutator = state => new Promise(_=>_(state));
-state.set(promiseMutator, {asynchronous:true}).then(state=>console.log(state));
+const fetchData = url => state => {
+  return fetch(url)
+    .then(response => response.json())
+    .then(data => ({ ...state, data }));
+};
+
+const state = new Understate({ initial: {}, asynchronous: true });
+
+state.set(fetchData('/api/users')).then(newState => {
+  console.log(newState); // { data: [...] }
+});
 ```
 
-#### Understate#s(mutator:function, {index:boolean=instance#index, asynchronous:boolean=instance#index});
-
-Same as Understate#set (See above), but returns the original object for chaining.
-
+Chained updates:
 ```javascript
+const state = new Understate({ initial: 0 });
+const add = n => x => x + n;
+
+state.set(add(5))
+  .then(() => state.set(add(3)))
+  .then(() => state.set(add(2)))
+  .then(() => state.get())
+  .then(result => console.log(result)); // 10
+```
+
+---
+
+### `state.s(mutator, options)`
+
+Shorthand for `set()` that returns the Understate instance for method chaining.
+
+#### Parameters
+
+Same as `state.set()`.
+
+#### Returns
+
+- `Understate` - The same Understate instance (for chaining)
+
+#### Examples
+
+Chainable updates:
+```javascript
+const state = new Understate({ initial: 0 });
+const add = n => x => x + n;
+
 state
-  .s(/*first mutator*/)
-  .s(/*second mutator*/)
-  .s(/*third mutator*/);
+  .s(add(1))
+  .s(add(2))
+  .s(add(3))
+  .subscribe(value => console.log(value));
+// Note: Execution order is not guaranteed
 ```
 
-Note: There is no guarantee about the order in which these chained methods are executed.
+---
 
-#### Understate#id();
+### `state.get(id)`
 
-Get the id of the current state.
+Retrieves the current state or a previously indexed state by ID.
 
+#### Parameters
+
+- **id** `string` (optional) - The ID of a previously indexed state
+
+#### Returns
+
+- `Promise<currentState>` - When called without arguments, returns the current state
+- `Promise<indexedState>` - When called with an ID, returns the state associated with that ID
+
+#### Examples
+
+Get current state:
 ```javascript
-state.id();
-```
-Note: this method returns the id directly and not a promise.
+const state = new Understate({ initial: { count: 0 } });
 
-#### Understate#id(id:boolean);
-
-Get the id of the current state and also index it if not already indexed.
-
-```javascript
-state.id(true);
-```
-Note: this method returns the id directly and not a promise.
-
-#### Understate#get();
-
-Retrieve the current state.
-
-```javascript
-state.get().then(state=>console.log(state));
+state.get().then(currentState => {
+  console.log(currentState); // { count: 0 }
+});
 ```
 
-#### Understate#get(index:string);
-
-Retrieve an indexed state by id.
-
+Get indexed state:
 ```javascript
-state.get(/*some index*/).then(state=>console.log(state));
+const state = new Understate({ initial: 0, index: true });
+const increment = x => x + 1;
+
+state.subscribe((value, id) => {
+  // Store the ID for later retrieval
+  setTimeout(() => {
+    state.get(id).then(historicalState => {
+      console.log('State at', id, ':', historicalState);
+    });
+  }, 5000);
+});
+
+state.set(increment); // 1
+state.set(increment); // 2
+state.set(increment); // 3
+// After 5 seconds, logs historical states: 1, 2, 3
 ```
 
-#### Understate#subscribe(subscriber:function);
+---
 
-Subscribe to changes in a state
+### `state.id(shouldIndex)`
 
+Returns the ID of the current state, optionally indexing it.
+
+#### Parameters
+
+- **shouldIndex** `boolean` (optional, default: `false`) - If `true`, indexes the current state before returning its ID
+
+#### Returns
+
+- `string` - The unique identifier for the current state (not a Promise)
+
+#### Examples
+
+Get the current state ID:
 ```javascript
-state.subscribe(state=>console.log(state));
+const state = new Understate({ initial: 'hello' });
+const currentId = state.id();
+console.log(currentId); // unique ID string
 ```
 
-##### Understate#subscribe(subscriber:function).unsubscribe();
-
-The object returned by "subscribe" is linked to the original via prototype-chain. Methods called on the original will affect the new object and vice-versa. In addition, the returned object has an "unsubscribe" method that cancels further updates from the original function passed to "subscribe".
-
+Get and index the current state:
 ```javascript
-state.subscribe(state=>console.log(state)).unsubscribe();
-```
-##### Subscribe Implementation Notes
+const state = new Understate({ initial: { value: 42 } });
+const increment = obj => ({ value: obj.value + 1 });
 
-The current implementation tracks subscriptions using a [Set](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set), resulting in a few "gotchas":
+state.set(increment).then(() => {
+  const id = state.id(true); // Index the current state
 
-###### Uniqueness
-
-The following would result in multiple subscriptions:
-
-```javascript
-var logEmitter = _ => state=>console.log(state);
-state.subscribe(logEmitter());
-state.subscribe(logEmitter());
-state.subscribe(logEmitter());
+  // Later, retrieve this state
+  state.get(id).then(savedState => {
+    console.log(savedState); // { value: 43 }
+  });
+});
 ```
 
-while the following will only result in one
+---
 
+### `state.subscribe(subscriber)`
+
+Registers a callback function to be called whenever the state changes.
+
+#### Parameters
+
+- **subscriber** `Function` (required) - Callback function invoked on state changes
+  - Signature: `(newState) => void`
+  - With indexing: `(newState, id) => void`
+
+#### Returns
+
+- `Understate` - A linked Understate instance with an `unsubscribe()` method
+
+#### Examples
+
+Basic subscription:
 ```javascript
-var log = state=>console.log(state)
-state.subscribe(log);
-state.subscribe(log);
-state.subscribe(log);
+const state = new Understate({ initial: 0 });
+const increment = x => x + 1;
+
+state.subscribe(newState => {
+  console.log('State changed to:', newState);
+});
+
+state.set(increment); // Logs: "State changed to: 1"
+state.set(increment); // Logs: "State changed to: 2"
 ```
-as each 'log' is the same object.
 
-###### Order
+Subscription with indexing:
+```javascript
+const state = new Understate({ initial: [], index: true });
+const addItem = item => items => [...items, item];
 
-There is no guarantee as to the order in which subscriptions are called.
+state.subscribe((newState, id) => {
+  console.log('State ID:', id);
+  console.log('New state:', newState);
+});
+
+state.set(addItem('Apple'));
+// Logs: "State ID: <unique-id>"
+// Logs: "New state: ['Apple']"
+```
+
+Multiple subscribers:
+```javascript
+const state = new Understate({ initial: 0 });
+
+state.subscribe(value => console.log('Subscriber 1:', value));
+state.subscribe(value => console.log('Subscriber 2:', value));
+
+state.set(x => x + 1);
+// Logs: "Subscriber 1: 1" (order not guaranteed)
+// Logs: "Subscriber 2: 1"
+```
+
+---
+
+### `subscription.unsubscribe()`
+
+Cancels a subscription created with `subscribe()`. Call this method on the object returned by `subscribe()`.
+
+#### Parameters
+
+None
+
+#### Returns
+
+- `void`
+
+#### Examples
+
+Unsubscribe from updates:
+```javascript
+const state = new Understate({ initial: 0 });
+const increment = x => x + 1;
+
+const subscription = state.subscribe(value => {
+  console.log('Value:', value);
+});
+
+state.set(increment); // Logs: "Value: 1"
+
+subscription.unsubscribe();
+
+state.set(increment); // Nothing logged
+```
+
+Conditional unsubscription:
+```javascript
+const state = new Understate({ initial: 0 });
+const increment = x => x + 1;
+
+const subscription = state.subscribe(value => {
+  console.log('Count:', value);
+
+  if (value >= 5) {
+    subscription.unsubscribe();
+    console.log('Unsubscribed at 5');
+  }
+});
+
+state.set(increment); // Logs: "Count: 1"
+state.set(increment); // Logs: "Count: 2"
+state.set(increment); // Logs: "Count: 3"
+state.set(increment); // Logs: "Count: 4"
+state.set(increment); // Logs: "Count: 5" and "Unsubscribed at 5"
+state.set(increment); // Nothing logged
+```
+
+---
+
+## Important Implementation Notes
+
+### Subscription Behavior
+
+The subscription system uses JavaScript `Set` for tracking subscribers, which has specific implications:
+
+#### Function Uniqueness
+
+Each unique function reference creates a separate subscription:
 
 ```javascript
-state.subscribe(state=>console.log('Or does this?'));
-state.subscribe(state=>console.log('Does this happen first?'));
-state.set(/*some mutator*/);
-//(Might Log: 'Does this happen first?' 'Or does this?')
+const state = new Understate({ initial: 0 });
+
+// Creates THREE separate subscriptions
+const logFactory = () => value => console.log(value);
+state.subscribe(logFactory());
+state.subscribe(logFactory());
+state.subscribe(logFactory());
+
+state.set(x => x + 1); // Logs "1" three times
+```
+
+Reusing the same function reference creates only ONE subscription:
+
+```javascript
+const state = new Understate({ initial: 0 });
+
+// Creates ONE subscription (subsequent calls have no effect)
+const logger = value => console.log(value);
+state.subscribe(logger);
+state.subscribe(logger);
+state.subscribe(logger);
+
+state.set(x => x + 1); // Logs "1" once
+```
+
+#### Execution Order
+
+Subscriber execution order is not guaranteed:
+
+```javascript
+const state = new Understate({ initial: 0 });
+
+state.subscribe(x => console.log('First?', x));
+state.subscribe(x => console.log('Second?', x));
+state.subscribe(x => console.log('Third?', x));
+
+state.set(x => x + 1);
+// Output order may vary between executions
+```
+
+### Mutator Best Practices
+
+Mutators should be pure functions that:
+- Do not modify the input state (respect immutability)
+- Have no side effects
+- Return a new state value
+
+```javascript
+// Good: Returns new object
+const goodMutator = state => ({ ...state, count: state.count + 1 });
+
+// Bad: Modifies input state
+const badMutator = state => {
+  state.count += 1;
+  return state;
+};
 ```
