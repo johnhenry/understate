@@ -14,12 +14,25 @@
  *
  * @function generateId
  * @returns {string} A 15-character unique identifier string
+ * @throws {Error} If random number generation fails
  * @private
  * @example
  * const stateId = generateId(); // "384756201938475"
  */
 export const generateId = function() {
-    return String(Math.random()).substr(2, 15);
+    try {
+        const randomValue = Math.random();
+        if (typeof randomValue !== 'number' || isNaN(randomValue) || randomValue < 0 || randomValue >= 1) {
+            throw new Error('generateId(): Failed to generate valid random number');
+        }
+        const idString = String(randomValue).substr(2, 15);
+        if (!idString || idString.length === 0) {
+            throw new Error('generateId(): Generated ID string is empty');
+        }
+        return idString;
+    } catch (error) {
+        throw new Error(`generateId(): Error generating ID - ${error.message}`);
+    }
 };
 
 //=============================================================================
@@ -86,6 +99,9 @@ export const generateId = function() {
  * @class Understate
  * @param {UnderstateConfig} [config={}] - Configuration options for the instance
  * @returns {Understate} A new Understate instance
+ * @throws {TypeError} If config parameter is not an object or null
+ * @throws {TypeError} If index parameter is not a boolean when provided
+ * @throws {TypeError} If asynchronous parameter is not a boolean when provided
  *
  * @example
  * // Create a simple state manager
@@ -110,43 +126,66 @@ export const Understate = function({
     index = false,
     asynchronous = false
 } = {}) {
-    /** @private @type {*} */
-    let _state = initial;
-
-    /** @private @type {string} */
-    let _id;
-
-    /** @private */
-    this._getState = () => _state;
-
-    /** @private */
-    this._setState = _ => _state = _;
-
-    /** @private */
-    this._getId = () => _id;
-
-    /** @private */
-    this._setId = _ => _id = _;
-
-    this._setId(generateId(this._getState()));
-
-    /** @private @type {boolean} */
-    this._index = !!index;
-
-    /** @private @type {boolean} */
-    this._asynchronous = !!asynchronous;
-
-    /** @private @type {Set<SubscriptionCallback>} */
-    this._subscriptions = new Set();
-
-    /** @private @type {Map<string, *>} */
-    this._indexed = new Map();
-
-    if (this._index) {
-        this._indexed.set(this._getId(), this._getState());
+    // Validate constructor parameters
+    if (arguments.length > 0 && arguments[0] !== undefined && arguments[0] !== null) {
+        if (typeof arguments[0] !== 'object' || Array.isArray(arguments[0])) {
+            throw new TypeError('Understate(): config parameter must be an object, received ' + typeof arguments[0]);
+        }
     }
 
-    return this;
+    if (arguments.length > 0 && arguments[0] && arguments[0].hasOwnProperty('index')) {
+        if (typeof index !== 'boolean') {
+            throw new TypeError('Understate(): index parameter must be a boolean, received ' + typeof index);
+        }
+    }
+
+    if (arguments.length > 0 && arguments[0] && arguments[0].hasOwnProperty('asynchronous')) {
+        if (typeof asynchronous !== 'boolean') {
+            throw new TypeError('Understate(): asynchronous parameter must be a boolean, received ' + typeof asynchronous);
+        }
+    }
+
+    try {
+        /** @private @type {*} */
+        let _state = initial;
+
+        /** @private @type {string} */
+        let _id;
+
+        /** @private */
+        this._getState = () => _state;
+
+        /** @private */
+        this._setState = _ => _state = _;
+
+        /** @private */
+        this._getId = () => _id;
+
+        /** @private */
+        this._setId = _ => _id = _;
+
+        this._setId(generateId(this._getState()));
+
+        /** @private @type {boolean} */
+        this._index = !!index;
+
+        /** @private @type {boolean} */
+        this._asynchronous = !!asynchronous;
+
+        /** @private @type {Set<SubscriptionCallback>} */
+        this._subscriptions = new Set();
+
+        /** @private @type {Map<string, *>} */
+        this._indexed = new Map();
+
+        if (this._index) {
+            this._indexed.set(this._getId(), this._getState());
+        }
+
+        return this;
+    } catch (error) {
+        throw new Error(`Understate(): Failed to initialize instance - ${error.message}`);
+    }
 };
 
 //=============================================================================
@@ -165,7 +204,12 @@ export const Understate = function({
  * @param {MutatorFunction} mutator - Function to transform the current state
  * @param {SetConfig} [config={}] - Configuration options for this update
  * @returns {Promise<*>} Promise resolving to the new state (and state ID if indexing is enabled)
- * @throws {Error} If mutator is not a function
+ * @throws {TypeError} If mutator is not a function
+ * @throws {TypeError} If config is not an object when provided
+ * @throws {TypeError} If config.index is not a boolean when provided
+ * @throws {TypeError} If config.asynchronous is not a boolean when provided
+ * @throws {Error} If mutator throws an error
+ * @throws {Error} If state update fails
  *
  * @example
  * // Synchronous update
@@ -185,41 +229,110 @@ export const Understate = function({
  *   .then((newValue, stateId) => console.log(stateId));
  */
 Understate.prototype.set = function(mutator, config = {}) {
+    // Validate mutator parameter
+    if (mutator === null || mutator === undefined) {
+        throw new TypeError('set(): mutator parameter is required, received ' + mutator);
+    }
     if (typeof mutator !== 'function') {
-        throw new Error('Mutator Must be a Function.');
+        throw new TypeError('set(): mutator must be a function, received ' + typeof mutator);
     }
 
-    config = Object.assign({ initial: undefined, asynchronous: undefined }, config);
+    // Validate config parameter
+    if (config !== null && config !== undefined) {
+        if (typeof config !== 'object' || Array.isArray(config)) {
+            throw new TypeError('set(): config parameter must be an object, received ' + typeof config);
+        }
+    }
+
+    try {
+        config = Object.assign({ initial: undefined, asynchronous: undefined }, config);
+    } catch (error) {
+        throw new Error(`set(): Failed to process config parameter - ${error.message}`);
+    }
+
     var index = config.index;
     var asynchronous = config.asynchronous;
 
+    // Validate index if provided
+    if (config.hasOwnProperty('index') && index !== null && index !== undefined && typeof index !== 'boolean') {
+        throw new TypeError('set(): config.index must be a boolean when provided, received ' + typeof index);
+    }
+
+    // Validate asynchronous if provided
+    if (config.hasOwnProperty('asynchronous') && asynchronous !== null && asynchronous !== undefined && typeof asynchronous !== 'boolean') {
+        throw new TypeError('set(): config.asynchronous must be a boolean when provided, received ' + typeof asynchronous);
+    }
+
     var self = this;
-    var newState = [mutator(self._getState())];
+
+    // Validate state before calling mutator
+    var currentState;
+    try {
+        currentState = self._getState();
+    } catch (error) {
+        throw new Error(`set(): Failed to get current state - ${error.message}`);
+    }
+
+    var newState;
+    try {
+        newState = [mutator(currentState)];
+    } catch (error) {
+        throw new Error(`set(): Mutator function threw an error - ${error.message}`);
+    }
+
     asynchronous = asynchronous || (asynchronous !== false && self._asynchronous);
     index = index || (index !== false && self._index);
 
     return new Promise((resolve, reject) => {
-        if (asynchronous) {
-            return newState[0].then(newState => {
-                newState = [newState];
+        try {
+            if (asynchronous) {
+                // Validate that newState[0] is a Promise
+                if (!newState[0] || typeof newState[0].then !== 'function') {
+                    return reject(new TypeError('set(): In asynchronous mode, mutator must return a Promise, received ' + typeof newState[0]));
+                }
+                return newState[0].then(newState => {
+                    try {
+                        newState = [newState];
+                        this._setState(newState[0]);
+                        this._setId(generateId(self._getState()));
+                        if (index) {
+                            self._indexed.set(self._getId(), self._getState());
+                            newState.push(self._getId());
+                        }
+                        self._subscriptions.forEach(sub => {
+                            try {
+                                sub.apply(self, newState);
+                            } catch (error) {
+                                // Log but don't fail if a subscription throws
+                                console.error(`set(): Subscription callback error - ${error.message}`);
+                            }
+                        });
+                        return resolve.apply(self, newState);
+                    } catch (error) {
+                        return reject(new Error(`set(): Failed to update state asynchronously - ${error.message}`));
+                    }
+                }).catch(error => {
+                    reject(new Error(`set(): Asynchronous mutator rejected - ${error.message || error}`));
+                });
+            } else {
                 this._setState(newState[0]);
                 this._setId(generateId(self._getState()));
                 if (index) {
                     self._indexed.set(self._getId(), self._getState());
                     newState.push(self._getId());
                 }
-                self._subscriptions.forEach(sub => sub.apply(self, newState));
+                self._subscriptions.forEach(sub => {
+                    try {
+                        sub.apply(self, newState);
+                    } catch (error) {
+                        // Log but don't fail if a subscription throws
+                        console.error(`set(): Subscription callback error - ${error.message}`);
+                    }
+                });
                 return resolve.apply(self, newState);
-            }).catch(reject);
-        } else {
-            this._setState(newState[0]);
-            this._setId(generateId(self._getState()));
-            if (index) {
-                self._indexed.set(self._getId(), self._getState());
-                newState.push(self._getId());
             }
-            self._subscriptions.forEach(sub => sub.apply(self, newState));
-            return resolve.apply(self, newState);
+        } catch (error) {
+            reject(new Error(`set(): Unexpected error during state update - ${error.message}`));
         }
     });
 };
@@ -235,6 +348,9 @@ Understate.prototype.set = function(mutator, config = {}) {
  * @param {MutatorFunction} mutator - Function to transform the current state
  * @param {SetConfig} [config={}] - Configuration options for this update
  * @returns {Understate} The Understate instance for method chaining
+ * @throws {TypeError} If mutator is not a function
+ * @throws {TypeError} If config is not an object when provided
+ * @throws {Error} If set() throws an error
  *
  * @example
  * // Chain multiple updates
@@ -243,7 +359,27 @@ Understate.prototype.set = function(mutator, config = {}) {
  *      .get().then(result => console.log(result));
  */
 Understate.prototype.s = function(mutator, config = {}) {
-    this.set(mutator, config);
+    // Validate mutator parameter
+    if (mutator === null || mutator === undefined) {
+        throw new TypeError('s(): mutator parameter is required, received ' + mutator);
+    }
+    if (typeof mutator !== 'function') {
+        throw new TypeError('s(): mutator must be a function, received ' + typeof mutator);
+    }
+
+    // Validate config parameter
+    if (config !== null && config !== undefined) {
+        if (typeof config !== 'object' || Array.isArray(config)) {
+            throw new TypeError('s(): config parameter must be an object, received ' + typeof config);
+        }
+    }
+
+    try {
+        this.set(mutator, config);
+    } catch (error) {
+        throw new Error(`s(): Failed to update state - ${error.message}`);
+    }
+
     return this;
 };
 
@@ -257,6 +393,8 @@ Understate.prototype.s = function(mutator, config = {}) {
  * @method get
  * @param {string|boolean} [id=false] - The ID of a previously indexed state, or false for current state
  * @returns {Promise<*>} Promise resolving to the requested state value
+ * @throws {TypeError} If id is provided but is not a string or boolean
+ * @throws {Error} If state retrieval fails
  *
  * @example
  * // Get current state
@@ -268,11 +406,36 @@ Understate.prototype.s = function(mutator, config = {}) {
  *   .then(historicalValue => console.log(historicalValue));
  */
 Understate.prototype.get = function(id = false) {
-    return new Promise(resolve => {
-        if (id === false) {
-            return resolve(this._getState(), this._getId());
+    // Validate id parameter
+    if (id !== false && id !== null && id !== undefined) {
+        if (typeof id !== 'string' && typeof id !== 'boolean') {
+            throw new TypeError('get(): id parameter must be a string or false, received ' + typeof id);
         }
-        resolve(this._indexed.get(id));
+        if (typeof id === 'string' && id.length === 0) {
+            throw new TypeError('get(): id parameter cannot be an empty string');
+        }
+    }
+
+    return new Promise((resolve, reject) => {
+        try {
+            if (id === false) {
+                const state = this._getState();
+                const currentId = this._getId();
+                return resolve(state, currentId);
+            }
+
+            if (!this._indexed || typeof this._indexed.get !== 'function') {
+                return reject(new Error('get(): Indexed storage is not available. Ensure indexing is enabled.'));
+            }
+
+            const state = this._indexed.get(id);
+            if (state === undefined) {
+                return reject(new Error(`get(): No state found for id "${id}"`));
+            }
+            resolve(state);
+        } catch (error) {
+            reject(new Error(`get(): Failed to retrieve state - ${error.message}`));
+        }
     });
 };
 
@@ -291,7 +454,9 @@ Understate.prototype.get = function(id = false) {
  * @method subscribe
  * @param {SubscriptionCallback} subscription - Callback invoked after each state update
  * @returns {SubscriptionPointer} Object with unsubscribe method and inherited Understate methods
- * @throws {Error} If subscription is not a function
+ * @throws {TypeError} If subscription is not a function
+ * @throws {TypeError} If subscription is null or undefined
+ * @throws {Error} If subscription setup fails
  *
  * @example
  * // Simple subscription
@@ -315,36 +480,75 @@ Understate.prototype.get = function(id = false) {
  * child.unsubscribe(true); // Unsubscribes both child and parent
  */
 Understate.prototype.subscribe = function(subscription) {
+    // Validate subscription parameter
+    if (subscription === null || subscription === undefined) {
+        throw new TypeError('subscribe(): subscription parameter is required, received ' + subscription);
+    }
     if (typeof subscription !== 'function') {
-        throw new Error('Subscription Must be a Function.');
+        throw new TypeError('subscribe(): subscription must be a function, received ' + typeof subscription);
     }
 
-    var original = this;
-    original._subscriptions.add(subscription);
+    try {
+        var original = this;
 
-    var pointer = Object.create(original);
-
-    /**
-     * Unsubscribes the callback from state updates.
-     *
-     * @param {boolean|number} [unsubscribeParents=false] - If true, unsubscribes parent subscriptions too
-     * @returns {Understate} The original Understate instance
-     */
-    pointer.unsubscribe = (unsubscribeParents = false) => {
-        original._subscriptions.delete(subscription);
-        if (unsubscribeParents) {
-            if (typeof original.unsubscribe === 'function') {
-                if (typeof unsubscribeParents === 'number') {
-                    // TODO: Also check to ensure that unsubscribeParents is a positive integer
-                    return original.unsubscribe(unsubscribeParents - 1);
-                }
-                return original.unsubscribe(unsubscribeParents);
-            }
+        if (!original._subscriptions || typeof original._subscriptions.add !== 'function') {
+            throw new Error('subscribe(): Subscriptions set is not properly initialized');
         }
-        return original;
-    };
 
-    return pointer;
+        original._subscriptions.add(subscription);
+        var pointer = Object.create(original);
+
+        /**
+         * Unsubscribes the callback from state updates.
+         *
+         * @param {boolean|number} [unsubscribeParents=false] - If true, unsubscribes parent subscriptions too
+         * @returns {Understate} The original Understate instance
+         * @throws {TypeError} If unsubscribeParents is not a boolean or number when provided
+         * @throws {RangeError} If unsubscribeParents is a negative number
+         */
+        pointer.unsubscribe = (unsubscribeParents = false) => {
+            // Validate unsubscribeParents parameter
+            if (unsubscribeParents !== false && unsubscribeParents !== null && unsubscribeParents !== undefined) {
+                if (typeof unsubscribeParents !== 'boolean' && typeof unsubscribeParents !== 'number') {
+                    throw new TypeError('unsubscribe(): unsubscribeParents must be a boolean or number, received ' + typeof unsubscribeParents);
+                }
+                if (typeof unsubscribeParents === 'number') {
+                    if (isNaN(unsubscribeParents)) {
+                        throw new TypeError('unsubscribe(): unsubscribeParents number cannot be NaN');
+                    }
+                    if (unsubscribeParents < 0) {
+                        throw new RangeError('unsubscribe(): unsubscribeParents must be a non-negative number, received ' + unsubscribeParents);
+                    }
+                    if (!Number.isInteger(unsubscribeParents)) {
+                        throw new TypeError('unsubscribe(): unsubscribeParents must be an integer when provided as a number, received ' + unsubscribeParents);
+                    }
+                }
+            }
+
+            try {
+                if (!original._subscriptions || typeof original._subscriptions.delete !== 'function') {
+                    throw new Error('unsubscribe(): Subscriptions set is not properly initialized');
+                }
+
+                original._subscriptions.delete(subscription);
+
+                if (unsubscribeParents) {
+                    if (typeof original.unsubscribe === 'function') {
+                        if (typeof unsubscribeParents === 'number') {
+                            return original.unsubscribe(unsubscribeParents - 1);
+                        }
+                        return original.unsubscribe(unsubscribeParents);
+                    }
+                }
+                return original;
+            } catch (error) {
+                throw new Error(`unsubscribe(): Failed to unsubscribe - ${error.message}`);
+            }
+        };
+        return pointer;
+    } catch (error) {
+        throw new Error(`subscribe(): Failed to create subscription - ${error.message}`);
+    }
 };
 
 //=============================================================================
@@ -361,6 +565,8 @@ Understate.prototype.subscribe = function(subscription) {
  * @method id
  * @param {boolean} [index=false] - If true, indexes the current state with its ID
  * @returns {string} The unique identifier of the current state
+ * @throws {TypeError} If index parameter is not a boolean when provided
+ * @throws {Error} If id retrieval fails
  *
  * @example
  * // Get current state ID
@@ -373,10 +579,31 @@ Understate.prototype.subscribe = function(subscription) {
  * state.get(currentId).then(historicalState => console.log(historicalState));
  */
 Understate.prototype.id = function(index = false) {
-    if (index) {
-        this._indexed.set(this._id, this._state);
+    // Validate index parameter
+    if (index !== null && index !== undefined && typeof index !== 'boolean') {
+        throw new TypeError('id(): index parameter must be a boolean, received ' + typeof index);
     }
-    return this._id;
+
+    try {
+        if (!this._id) {
+            throw new Error('id(): Instance ID is not initialized');
+        }
+
+        if (index) {
+            if (!this._indexed || typeof this._indexed.set !== 'function') {
+                throw new Error('id(): Indexed storage is not available');
+            }
+            if (!this._state && this._getState) {
+                const currentState = this._getState();
+                this._indexed.set(this._id, currentState);
+            } else {
+                this._indexed.set(this._id, this._state);
+            }
+        }
+        return this._id;
+    } catch (error) {
+        throw new Error(`id(): Failed to retrieve or index id - ${error.message}`);
+    }
 };
 
 //=============================================================================
