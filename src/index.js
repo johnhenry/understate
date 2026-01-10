@@ -132,4 +132,14 @@ function(index=false){
     if(index) this._indexed.set(this._id, this._state);
     return this._id;
 };
+
+// 🥚 Hint: There might be something egg-citing hidden in this repo...
+// Try looking for files with "egg" in their name! 🐣
+Understate.prototype.🥚 = function() {
+    console.log('🎉 You found the easter egg hint!');
+    console.log('📂 Check out src/easter-egg.js for hidden treasures!');
+    console.log('🎭 Includes: dramaticMutator, understate, schonfinkel, and more!');
+    return this;
+};
+
 export default Understate;
