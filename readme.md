@@ -17,106 +17,213 @@ Wait, what?!
 
 ### Basic Usage
 
-When you first create an Understate object, it has an initial internal state that can be accesses via the "get" method.
+When you first create an Understate object, it has an initial internal state that can be accessed via the "get" method.
 
 ```javascript
-import Understate from 'Understate';
-var log   = value => console.log(value);
-var state = new Understate();
-state.get().then(log);//undefined
+import Understate from 'understate';
+
+/**
+ * Simple logger utility
+ * @param {*} value - The value to log
+ * @returns {void}
+ */
+const log = (value) => console.log(value);
+
+// Create new state instance
+const state = new Understate();
+
+// Get initial state (undefined by default)
+state.get()
+  .then(log) // undefined
+  .catch((error) => console.error('Error getting state:', error));
 ```
 
-You can also pass an initial value when creating a Understate object.
+You can also pass an initial value when creating an Understate object.
 
 ```javascript
-var state = new Understate({initial: 0});
-state.get().then(log);//0
+/**
+ * Create state with initial value
+ * @type {Understate}
+ */
+const state = new Understate({ initial: 0 });
+
+state.get()
+  .then(log) // 0
+  .catch((error) => console.error('Error getting state:', error));
 ```
 
 You can update the internal value by passing a **mutator** (See Below) function to the "set" method.
 
 ```javascript
-var increment = x => x + 1;
-var state     = new Understate({initial: 0});
-state.get().then(log);//0
-state.set(increment).then(log);//1
+/**
+ * Increment mutator - adds 1 to current state
+ * @param {number} x - Current state value
+ * @returns {number} Incremented value
+ */
+const increment = (x) => x + 1;
+
+const state = new Understate({ initial: 0 });
+
+// Get initial state
+state.get()
+  .then(log) // 0
+  .catch((error) => console.error('Error:', error));
+
+// Set new state using mutator
+state.set(increment)
+  .then(log) // 1
+  .catch((error) => console.error('Error setting state:', error));
 ```
 
 You can subscribe to updates with the **"subscribe"** method.
 
 ```javascript
-var state     = new Understate({initial: 0});
+const state = new Understate({ initial: 0 });
+
+// Subscribe to all state changes
 state.subscribe(log);
-state.set(increment);//1
-state.set(increment);//2
-state.set(increment);//3
+
+// Each set operation will trigger the subscriber
+state.set(increment)
+  .catch((error) => console.error('Error:', error)); // Logs: 1
+
+state.set(increment)
+  .catch((error) => console.error('Error:', error)); // Logs: 2
+
+state.set(increment)
+  .catch((error) => console.error('Error:', error)); // Logs: 3
 ```
 
 You can unsubscribe to updates by calling the **"unsubscribe"** method on the object returned by the subscribe method.
 
 ```javascript
-var state         = new Understate({initial: 0});
-var unsubscriber  = state.subscribe(log);
-state.set(increment);//1
-state.set(increment);//2
+const state = new Understate({ initial: 0 });
+const unsubscriber = state.subscribe(log);
+
+state.set(increment)
+  .catch((error) => console.error('Error:', error)); // Logs: 1
+
+state.set(increment)
+  .catch((error) => console.error('Error:', error)); // Logs: 2
+
+// Unsubscribe from further updates
 unsubscriber.unsubscribe();
-state.set(increment);//(Nothing logged)
+
+state.set(increment)
+  .catch((error) => console.error('Error:', error)); // Nothing logged
 ```
 
 ### Indexation
 
 Understate objects track their state internally.
 
-Each Understate object associates an id with it's value whenever it's value us update. This can be accessed from the **"id"** method.
+Each Understate object associates an id with its value whenever its value is updated. This can be accessed from the **"id"** method.
 
 ```javascript
-var state     = new Understate({initial:0});
-log(state.id());//*<ID>
-state.set(increment).then(x=>console.log(state.id()));//*<ID(Different)>
+const state = new Understate({ initial: 0 });
+
+// Get current state ID
+const initialId = state.id();
+console.log(initialId); // *<ID>
+
+state.set(increment)
+  .then(() => {
+    const newId = state.id();
+    console.log(newId); // *<ID(Different)>
+    console.log(initialId !== newId); // true
+  })
+  .catch((error) => console.error('Error:', error));
 ```
 
 Passing a _truthy_ "index" config option to the **"set"** function will cause its id to be passed as a second argument to the function passed to subscribe.
 
 ```javascript
-var logId     = (value, id) => console.log(`${id}:${value}`);
-var state     = new Understate({initial:0});
+/**
+ * Logger with ID - logs both value and state ID
+ * @param {*} value - The state value
+ * @param {string} [id] - The state ID (when indexing is enabled)
+ * @returns {void}
+ */
+const logId = (value, id) => {
+  if (id) {
+    console.log(`${id}:${value}`);
+  } else {
+    console.log(value);
+  }
+};
+
+const state = new Understate({ initial: 0 });
 state.subscribe(logId);
-state.set(increment, {index:true});//*<ID>:0
-state.set(increment, {index:true});//*<ID>:1
-state.set(increment, {index:true});//*<ID>:2
+
+state.set(increment, { index: true })
+  .catch((error) => console.error('Error:', error)); // *<ID>:1
+
+state.set(increment, { index: true })
+  .catch((error) => console.error('Error:', error)); // *<ID>:2
+
+state.set(increment, { index: true })
+  .catch((error) => console.error('Error:', error)); // *<ID>:3
 ```
 
-Passing a _truthy_ "index" config option to the **"set"** function will also cause the Understate object to internally index it's state by id. This id can later be used to access any indexed states by passing it to the **"get"** method.
+Passing a _truthy_ "index" config option to the **"set"** function will also cause the Understate object to internally index its state by id. This id can later be used to access any indexed states by passing it to the **"get"** method.
 
 ```javascript
-var state     = new Understate({initial:0});
-state.subscribe((value, id) => setTimeout(_=>state.get(id).then(log), 5000));
-state.set(increment, {index:true});//0 (After 5 seconds)
-state.set(increment, {index:true});//1 (After 5 seconds)
-state.set(increment, {index:true});//2 (After 5 seconds)
+const state = new Understate({ initial: 0 });
+
+state.subscribe((value, id) => {
+  // Retrieve historical state after delay
+  setTimeout(() => {
+    state.get(id)
+      .then(log)
+      .catch((error) => console.error('Error retrieving state:', error));
+  }, 5000);
+});
+
+state.set(increment, { index: true })
+  .catch((error) => console.error('Error:', error)); // Logs: 1 (After 5 seconds)
+
+state.set(increment, { index: true })
+  .catch((error) => console.error('Error:', error)); // Logs: 2 (After 5 seconds)
+
+state.set(increment, { index: true })
+  .catch((error) => console.error('Error:', error)); // Logs: 3 (After 5 seconds)
 ```
 
 Passing a _truthy_ index option to the constructor will cause the set function to automatically index values.
 
 ```javascript
-var logId     = (value, id) => console.log(`${id}:${value}`);
-var state     = new Understate({initial:0, index:true});
+const state = new Understate({ initial: 0, index: true });
 state.subscribe(logId);
-state.set(increment);//*<ID>:0
-state.set(increment);//*<ID>:1
-state.set(increment, {index:false});//undefined:2
+
+// Automatically indexed
+state.set(increment)
+  .catch((error) => console.error('Error:', error)); // *<ID>:1
+
+state.set(increment)
+  .catch((error) => console.error('Error:', error)); // *<ID>:2
+
+// Override auto-indexing for this call
+state.set(increment, { index: false })
+  .catch((error) => console.error('Error:', error)); // undefined:3
 ```
 
 If not already indexed, you can index the current state by passing a _truthy_ argument to the id method.
 
 ```javascript
-var state     = new Understate({initial:0);
-state.set(incriment);
-var id = state.id(true);
-state.get(id).then(log);//1
+const state = new Understate({ initial: 0 });
+
+state.set(increment)
+  .then(() => {
+    // Index current state and get its ID
+    const id = state.id(true);
+
+    return state.get(id);
+  })
+  .then(log) // 1
+  .catch((error) => console.error('Error:', error));
 ```
 
-Indexation is a good reason to consider immutability in you application. Using **mutators** (below) that return modified copies of your state without modifying the original ensures that each id points to a uniquely identifiable object.
+Indexation is a good reason to consider immutability in your application. Using **mutators** (below) that return modified copies of your state without modifying the original ensures that each id points to a uniquely identifiable object.
 
 ## Mutators
 
@@ -127,7 +234,15 @@ Indexation is a good reason to consider immutability in you application. Using *
 A **mutator** should have the following function signature:
 
 ```javascript
-state => {/*some combination of closure and "state"*/};
+/**
+ * Mutator function signature
+ * @param {*} state - The current state
+ * @returns {*} The new state (should be a new reference for immutability)
+ */
+(state) => {
+  /* some combination of closure and "state" */
+  return newState;
+};
 ```
 
 ### Example
@@ -135,7 +250,12 @@ state => {/*some combination of closure and "state"*/};
 This mutator returns the state incremented by 1
 
 ```javascript
-var increment = state => state + 1;
+/**
+ * Increment mutator - pure function that increments a number
+ * @param {number} state - Current numeric state
+ * @returns {number} State incremented by 1
+ */
+const increment = (state) => state + 1;
 ```
 
 ### Redux Comparison
@@ -161,17 +281,33 @@ We can take advantage of this by creating mutation **builder** functions that ta
 A **builder** function should have the following function signature:
 
 ```javascript
-(...parameters) => state => {/*some combination of closure, "parameters", and "state"*/};
-//OR
-(...parameters) => /*<Mutator>*/;
+/**
+ * Builder function signature - creates mutators with closure
+ * @param {...*} parameters - Parameters to close over
+ * @returns {Function} A mutator function
+ */
+(...parameters) => (state) => {
+  /* some combination of closure, "parameters", and "state" */
+  return newState;
+};
+// OR
+(...parameters) => /* <Mutator> */;
 ```
 
 ### Example
 
 ```javascript
-var adder     = y => x => x + y;
-var increment = adder(1);
-//This is equivalent to the increment function defined above
+/**
+ * Adder builder - creates mutators that add a specific value
+ * @param {number} y - The value to add
+ * @returns {Function} A mutator that adds y to the state
+ */
+const adder = (y) => (x) => x + y;
+
+// Create a specific mutator
+const increment = adder(1);
+
+// This is equivalent to the increment function defined above
 // adder(y) = y => x => x + y;
 // adder(1) = x => x + 1;
 ```
@@ -183,7 +319,7 @@ We can see that a **builder** function and a reducer function from Redux are ver
 #### Builder Function
 
 ```javascript
-(...paramters) => previousState => newState
+(...parameters) => previousState => newState
 ```
 
 #### Reducer Function
@@ -212,24 +348,50 @@ It's often useful to set a state rather than modify it. In this case, we
 can use a function that returns a constant.
 
 ```javascript
-var one   = _ => 1;
-var state = new Understate();
+/**
+ * Constant mutator that always returns 1
+ * @param {*} _ - Current state (ignored)
+ * @returns {number} Always returns 1
+ */
+const one = (_) => 1;
+
+const state = new Understate();
 state.subscribe(log);
-state.set(one);//1
-state.set(one);//1
-state.set(one);//1
+
+state.set(one)
+  .catch((error) => console.error('Error:', error)); // 1
+
+state.set(one)
+  .catch((error) => console.error('Error:', error)); // 1
+
+state.set(one)
+  .catch((error) => console.error('Error:', error)); // 1
 ```
 
 We can create constant function **builders** as well.
 
 ```javascript
-var constant  = a => _ => a;
-var one       = constant(1);//This is equivalent to "one" defined above.
-var state     = new Understate();
+/**
+ * Constant builder - creates mutators that always return a specific value
+ * @param {*} a - The constant value to return
+ * @returns {Function} A mutator that always returns the constant value
+ */
+const constant = (a) => (_) => a;
+
+// This is equivalent to "one" defined above
+const one = constant(1);
+
+const state = new Understate();
 state.subscribe(log);
-state.set(one);//1
-state.set(one);//1
-state.set(constant(1));//1
+
+state.set(one)
+  .catch((error) => console.error('Error:', error)); // 1
+
+state.set(one)
+  .catch((error) => console.error('Error:', error)); // 1
+
+state.set(constant(1))
+  .catch((error) => console.error('Error:', error)); // 1
 ```
 
 ### Using Builders
@@ -237,93 +399,224 @@ state.set(constant(1));//1
 Using different types of **builders** allows us to elegantly express how we modify an application's state.
 
 ```javascript
-//CounterApplication.js
-import Understate from 'Understate';
-var log = value => console.log(value);
-//Builders
-var constant  = a => _ => a;
-var adder     = a => b => b + a;
-//Mutators
-var zero      = constant(0);
-var increment = adder(1);
-//App
-var counter   = new Understate();
+// CounterApplication.js
+import Understate from 'understate';
+
+/**
+ * Logger utility
+ * @param {*} value - Value to log
+ */
+const log = (value) => console.log(value);
+
+// Builders
+/**
+ * Constant builder
+ * @param {*} a - Constant value
+ * @returns {Function} Mutator returning constant
+ */
+const constant = (a) => (_) => a;
+
+/**
+ * Adder builder
+ * @param {number} a - Value to add
+ * @returns {Function} Mutator that adds value
+ */
+const adder = (a) => (b) => b + a;
+
+// Mutators
+const zero = constant(0);
+const increment = adder(1);
+
+// App
+const counter = new Understate();
 counter.subscribe(log);
-counter.set(zero);//0
-counter.set(increment);//1
-counter.set(adder(2));//3
+
+counter.set(zero)
+  .catch((error) => console.error('Error:', error)); // 0
+
+counter.set(increment)
+  .catch((error) => console.error('Error:', error)); // 1
+
+counter.set(adder(2))
+  .catch((error) => console.error('Error:', error)); // 3
 ```
 
 ```javascript
-//messageApplicatiopn.js
-import Understate from 'Understate';
-var log = value => console.log(value);
-//Builders
-var constant    = a => _ => a;
-var addMessage  = message => messages => messages.concat(message);
-var logger = message => {log(message); return message};
-//Mutators
-var empty       = constant([]);
-//App
-var messages    = new Understate();
+// messageApplication.js
+import Understate from 'understate';
+
+/**
+ * Logger utility
+ * @param {*} value - Value to log
+ */
+const log = (value) => console.log(value);
+
+// Builders
+/**
+ * Constant builder
+ * @param {*} a - Constant value
+ * @returns {Function} Mutator returning constant
+ */
+const constant = (a) => (_) => a;
+
+/**
+ * Add message builder - creates mutator that appends a message
+ * @param {string} message - Message to append
+ * @returns {Function} Mutator that appends message to array
+ */
+const addMessage = (message) => (messages) => messages.concat(message);
+
+/**
+ * Logger that returns the logged value
+ * @param {*} message - Message to log
+ * @returns {*} The same message
+ */
+const logger = (message) => {
+  log(message);
+  return message;
+};
+
+// Mutators
+const empty = constant([]);
+
+// App
+const messages = new Understate();
 messages.subscribe(log);
-messages.set(empty);//[]
-messages.set(addMessage('Hello'));//['Hello']
-messages.set(addMessage('there'));//['Hello', 'there']
-messages.set(addMessage('John.'));//['Hello', 'there', 'John.']
+
+messages.set(empty)
+  .catch((error) => console.error('Error:', error)); // []
+
+messages.set(addMessage('Hello'))
+  .catch((error) => console.error('Error:', error)); // ['Hello']
+
+messages.set(addMessage('there'))
+  .catch((error) => console.error('Error:', error)); // ['Hello', 'there']
+
+messages.set(addMessage('John.'))
+  .catch((error) => console.error('Error:', error)); // ['Hello', 'there', 'John.']
 ```
 
 #### Decorators
 
-Redux has a concept of _middleware_ used to intercept objects and preform actions such a logging.
+Redux has a concept of _middleware_ used to intercept objects and perform actions such as logging.
 
-Rather, we can simply design our **mutators** to preform these actions.
+Rather, we can simply design our **mutators** to perform these actions.
 
 ```javascript
-//messageApplicatiopn.js
-import Understate from 'Understate';
-var receiveLog = value => {console.log(value + ' received.'); return value};
-//Builders
-var constant    = a => _ => { console.log('Setting constant: ' + a); return a};
-var addMessageLog  = message => messages => messages.concat(receiveLog(message));
-//Mutators
-var empty       = constant([]);
-//App
-var messages    = new Understate();
-messages.set(empty);//'Setting constant:'
-messages.set(addMessageLog('Hello'));//'Hello received.'
-messages.set(addMessageLog('there'));//'there received.'
-messages.set(addMessageLog('John.'));//'John. received.'
+// messageApplication.js
+import Understate from 'understate';
+
+/**
+ * Receive logger - logs when message is received
+ * @param {string} value - Message received
+ * @returns {string} The message
+ */
+const receiveLog = (value) => {
+  console.log(value + ' received.');
+  return value;
+};
+
+// Builders
+/**
+ * Constant builder with logging
+ * @param {*} a - Constant value
+ * @returns {Function} Mutator with logging
+ */
+const constant = (a) => (_) => {
+  console.log('Setting constant: ' + a);
+  return a;
+};
+
+/**
+ * Add message builder with logging
+ * @param {string} message - Message to add
+ * @returns {Function} Mutator that adds message with logging
+ */
+const addMessageLog = (message) => (messages) =>
+  messages.concat(receiveLog(message));
+
+// Mutators
+const empty = constant([]);
+
+// App
+const messages = new Understate();
+
+messages.set(empty)
+  .catch((error) => console.error('Error:', error)); // 'Setting constant:'
+
+messages.set(addMessageLog('Hello'))
+  .catch((error) => console.error('Error:', error)); // 'Hello received.'
+
+messages.set(addMessageLog('there'))
+  .catch((error) => console.error('Error:', error)); // 'there received.'
+
+messages.set(addMessageLog('John.'))
+  .catch((error) => console.error('Error:', error)); // 'John. received.'
 ```
 
-**Decorators** take in functions return similar functions with enhanced functionality.  They should take a function as one of it's arguments and return a function with the same signature. We apply them to **builder** functions.
+**Decorators** take in functions return similar functions with enhanced functionality. They should take a function as one of its arguments and return a function with the same signature. We apply them to **builder** functions.
 
 ```javascript
-//messageApplicatiopn.js
-import Understate from 'Understate';
-//Decorators
-var logInput = (target =  _ => _ , preamble = '', conclusion = '') => (...args) => {
+// messageApplication.js
+import Understate from 'understate';
+
+// Decorators
+/**
+ * Log input decorator - wraps a builder to log its inputs
+ * @param {Function} target - The builder function to wrap
+ * @param {string} [preamble=''] - Text to log before arguments
+ * @param {string} [conclusion=''] - Text to log after arguments
+ * @returns {Function} Wrapped builder with logging
+ */
+const logInput = (target = (_) => _, preamble = '', conclusion = '') =>
+  (...args) => {
     console.log(preamble + String(args) + conclusion);
     return target.apply(this, args);
-}
-//Builders
-var constant    = logInput(a => _ => a, 'Setting constant: ');
-var addMessage  = logInput(message => messages => messages.concat(message), '', ' received.');
-//Mutators
-var empty       = constant([]);
-//App
-var messages    = new Understate();
-messages.set(empty);//'Setting constant:'
-messages.set(addMessage('Hello'));//'Hello received.'
-messages.set(addMessage('there'));//'there received.'
-messages.set(addMessage('John.'));//'John. received.'
+  };
+
+// Builders
+/**
+ * Constant builder
+ * @param {*} a - Constant value
+ * @returns {Function} Mutator
+ */
+const constant = logInput((a) => (_) => a, 'Setting constant: ');
+
+/**
+ * Add message builder
+ * @param {string} message - Message to add
+ * @returns {Function} Mutator
+ */
+const addMessage = logInput(
+  (message) => (messages) => messages.concat(message),
+  '',
+  ' received.'
+);
+
+// Mutators
+const empty = constant([]);
+
+// App
+const messages = new Understate();
+
+messages.set(empty)
+  .catch((error) => console.error('Error:', error)); // 'Setting constant:'
+
+messages.set(addMessage('Hello'))
+  .catch((error) => console.error('Error:', error)); // 'Hello received.'
+
+messages.set(addMessage('there'))
+  .catch((error) => console.error('Error:', error)); // 'there received.'
+
+messages.set(addMessage('John.'))
+  .catch((error) => console.error('Error:', error)); // 'John. received.'
 ```
 
-Note: ECMAcript 8 (2017) has a similar new language feature, also called "decorators", that work in a similar way, but can only be applied to class methods.
+Note: ECMAScript 8 (2017) has a similar new language feature, also called "decorators", that work in a similar way, but can only be applied to class methods.
 
 ## Routers
 
-The final piece of the puzzle is the **router**. It's job is to take "action" from another component in the application, and return a **mutator** function to be applied to the current state. It does this by selecting a **builder** based on an "action" and extracting parameters from that "action".
+The final piece of the puzzle is the **router**. Its job is to take "action" from another component in the application, and return a **mutator** function to be applied to the current state. It does this by selecting a **builder** based on an "action" and extracting parameters from that "action".
 
 Strictly speaking, **routers** are **builders**, as they take in a parameter, "action", and return a **mutator** function. They are still; however, a useful abstraction when it comes to deciding how to handle updates.
 
@@ -332,9 +625,17 @@ Strictly speaking, **routers** are **builders**, as they take in a parameter, "a
 A **router** should have the following signature:
 
 ```javascript
-action => state => {/*some combination of closure, "action parameters, and "state"*/};
-//OR
-action => /*<Mutator>*/;
+/**
+ * Router function signature
+ * @param {Object} action - Action object containing builder type and parameters
+ * @returns {Function} A mutator function
+ */
+(action) => (state) => {
+  /* some combination of closure, "action" parameters, and "state" */
+  return newState;
+};
+// OR
+(action) => /* <Mutator> */;
 ```
 
 
@@ -343,129 +644,594 @@ action => /*<Mutator>*/;
 This is an application that uses a sample router.
 
 ```javascript
-//File: sampleRouters.js
+// File: sampleRouters.js
 
-//Schema - Not strictly necessary, but helpful
-// {
-//   builder     : <String>,
-//   parameter   : <Number>
-// }
-//
+/**
+ * Action Schema (TypeScript-style documentation)
+ * @typedef {Object} Action
+ * @property {string} builder - The name of the builder to use
+ * @property {number} parameter - The parameter to pass to the builder
+ */
 
-//Builders
-var add       = a => b => b + a;
-var subtract  = a => b => b - a;
-var reset     = a => _ => a;
+// Builders
+/**
+ * Add builder
+ * @param {number} a - Value to add
+ * @returns {Function} Mutator that adds value
+ */
+const add = (a) => (b) => b + a;
 
-var extractSubject = function(action){
-  return action.builder;
-}
-var extractParamaters = function(action){
-  return action.parameter;
-}
+/**
+ * Subtract builder
+ * @param {number} a - Value to subtract
+ * @returns {Function} Mutator that subtracts value
+ */
+const subtract = (a) => (b) => b - a;
 
-//Router Implementation: Dictionary
-var builders = new Map();
-//Available mutation builders
-builders.set('add'     ,  add);
-builders.set('subtract',  subtract);
-builders.set('reset'   ,  reset);
-var mapRouter = action => {
-  var builder = builders.get(extractSubject(action));
-  return builder ? builder(extractParamaters(action)) : _ => _;
-};
+/**
+ * Reset builder
+ * @param {number} a - Value to reset to
+ * @returns {Function} Mutator that resets to value
+ */
+const reset = (a) => (_) => a;
 
-//Router Implementation: Switch Statement
-var switchRouter = action => {
-  var builder;
-  switch(extractSubject(action)){
-    case 'add'      :
-      builder = add;
-      break;
-    case 'subtract' :
-      builder = subtract;
-      break;
-    case 'reset'    :
-      builder = reset;
-      break;
-    default;
-    return _ => _;
+/**
+ * Extract the builder name from action
+ * @param {Action} action - The action object
+ * @returns {string} The builder name
+ */
+const extractSubject = (action) => {
+  if (!action || typeof action.builder !== 'string') {
+    throw new Error('Invalid action: missing builder property');
   }
-  return builder(extractParamaters(action));
+  return action.builder;
 };
+
+/**
+ * Extract parameters from action
+ * @param {Action} action - The action object
+ * @returns {*} The parameter value
+ */
+const extractParameters = (action) => {
+  if (!action || action.parameter === undefined) {
+    throw new Error('Invalid action: missing parameter property');
+  }
+  return action.parameter;
+};
+
+// Router Implementation: Dictionary (Map-based)
+const builders = new Map();
+
+// Available mutation builders
+builders.set('add', add);
+builders.set('subtract', subtract);
+builders.set('reset', reset);
+
+/**
+ * Map-based router - uses Map to look up builders
+ * @param {Action} action - The action to route
+ * @returns {Function} The appropriate mutator function
+ */
+const mapRouter = (action) => {
+  try {
+    const subject = extractSubject(action);
+    const parameters = extractParameters(action);
+    const builder = builders.get(subject);
+
+    if (!builder) {
+      console.warn(`Unknown builder: ${subject}`);
+      return (_) => _; // Identity function as fallback
+    }
+
+    return builder(parameters);
+  } catch (error) {
+    console.error('Router error:', error);
+    return (_) => _; // Identity function on error
+  }
+};
+
+// Router Implementation: Switch Statement
+/**
+ * Switch-based router - uses switch statement to select builders
+ * @param {Action} action - The action to route
+ * @returns {Function} The appropriate mutator function
+ */
+const switchRouter = (action) => {
+  try {
+    const subject = extractSubject(action);
+    const parameters = extractParameters(action);
+    let builder;
+
+    switch (subject) {
+      case 'add':
+        builder = add;
+        break;
+      case 'subtract':
+        builder = subtract;
+        break;
+      case 'reset':
+        builder = reset;
+        break;
+      default:
+        console.warn(`Unknown builder: ${subject}`);
+        return (_) => _; // Identity function as fallback
+    }
+
+    return builder(parameters);
+  } catch (error) {
+    console.error('Router error:', error);
+    return (_) => _; // Identity function on error
+  }
+};
+
+export { mapRouter, switchRouter };
 export default {
   mapRouter,
   switchRouter
-}
+};
 ```
 
 ```javascript
-//File: application.js
-import Understate from 'Understate';
-import {mapRouter as router} from './sampleRouters.js';
-var state = new Understate({initial:0});
-state.subscribe(state => console.log(state));
-var update = action => state.set(router(action));
+// File: application.js
+import Understate from 'understate';
+import { mapRouter as router } from './sampleRouters.js';
+
+/**
+ * Create state instance with initial value
+ * @type {Understate}
+ */
+const state = new Understate({ initial: 0 });
+
+// Subscribe to state changes
+state.subscribe((currentState) => {
+  console.log('State updated:', currentState);
+});
+
+/**
+ * Update function - routes action through router to mutator
+ * @param {Object} action - The action to process
+ * @returns {Promise} Promise resolved with new state
+ */
+const update = (action) =>
+  state.set(router(action))
+    .catch((error) => {
+      console.error('Update failed:', error);
+      throw error;
+    });
+
 export default update;
 ```
 
 ```javascript
-//runner.js
+// runner.js
 import update from './application.js';
-var actions = [
+
+/**
+ * @type {Array<Action>}
+ */
+const actions = [
   {
-    builder    : 'add',
-    parameter  : 1
+    builder: 'add',
+    parameter: 1
   },
   {
-    builder    : 'subtract',
-    parameter  : 2
+    builder: 'subtract',
+    parameter: 2
   },
   {
-    builder    : 'reset',
-    parameter  : 0
+    builder: 'reset',
+    parameter: 0
   }
 ];
-var action;
-while((action = actions.shift())) update(action);
-//1
-//-1
-//0
+
+/**
+ * Process all actions sequentially
+ */
+const processActions = async () => {
+  try {
+    for (const action of actions) {
+      await update(action);
+    }
+  } catch (error) {
+    console.error('Failed to process actions:', error);
+  }
+};
+
+processActions();
+
+// Output:
+// State updated: 1
+// State updated: -1
+// State updated: 0
 ```
 
 ## Asynchronous Mutators
 
-You can modify an Understate instances at creation to take **asynchronous mutators** by passing a truthy "asynchronous" flag to the config function. Like normal (synchronous) **mutators** these functions take a state as an argument. Instead of returning a modified state; however, they return a promise resolved with the modified state.
+You can modify an Understate instance at creation to take **asynchronous mutators** by passing a truthy "asynchronous" flag to the config function. Like normal (synchronous) **mutators** these functions take a state as an argument. Instead of returning a modified state; however, they return a promise resolved with the modified state.
 
 Note: We can pass an "asynchronous" config option to "set" method to temporarily override the "asynchronous" flag
 
 ```javascript
-var log = value => console.log(value);
-//Builders
-var constant    = a => _ => a;
-var addMessageAsync  = message => messages => new Promise((resolve, reject)=>{
-  if(Math.random() < 0.25) return reject(new Error('Simulated Async Failure'));
-  return setTimeout(()=>resolve(messages.concat(message)), 1000);
-});
-//Mutators
-var empty       = constant([]);
-//App
-var messages    = new Understate({asynchronous:true});
+/**
+ * Logger utility
+ * @param {*} value - Value to log
+ */
+const log = (value) => console.log(value);
+
+// Builders
+/**
+ * Constant builder
+ * @param {*} a - Constant value
+ * @returns {Function} Mutator
+ */
+const constant = (a) => (_) => a;
+
+/**
+ * Async add message builder - simulates async operation
+ * @param {string} message - Message to add
+ * @returns {Function} Async mutator that adds message after delay
+ */
+const addMessageAsync = (message) => (messages) =>
+  new Promise((resolve, reject) => {
+    // Simulate random failures
+    if (Math.random() < 0.25) {
+      return reject(new Error('Simulated Async Failure'));
+    }
+
+    // Simulate async operation (e.g., API call)
+    setTimeout(() => {
+      resolve(messages.concat(message));
+    }, 1000);
+  });
+
+// Mutators
+const empty = constant([]);
+
+// App with async support
+const messages = new Understate({ asynchronous: true });
 messages.subscribe(log);
-messages.set(empty,{asynchronous:false});
-messages.set(addMessageAsync('Hello'))
-  .then(_=>messages.set(addMessageAsync('there'))
-  .then(_=>messages.set(addMessageAsync('John.'))))
-.catch(log).catch(log);
-//[]
-//['Hello']
-//['Hello', 'there']
-//['Hello', 'there', 'John.']
-//OR
-//[Error: Simulated Async Failure]
+
+// Initialize with synchronous mutator
+messages.set(empty, { asynchronous: false })
+  .then(() => messages.set(addMessageAsync('Hello')))
+  .then(() => messages.set(addMessageAsync('there')))
+  .then(() => messages.set(addMessageAsync('John.')))
+  .then(() => console.log('All messages added successfully'))
+  .catch((error) => {
+    console.error('Failed to add message:', error);
+  });
+
+// Output (on success):
+// []
+// ['Hello']
+// ['Hello', 'there']
+// ['Hello', 'there', 'John.']
+// All messages added successfully
+
+// OR (on failure):
+// []
+// ['Hello']
+// Failed to add message: Error: Simulated Async Failure
 ```
 
+## Advanced Usage Patterns
 
+### Pattern 1: Combining Multiple Mutators
+
+You can compose mutators to create more complex state transformations:
+
+```javascript
+/**
+ * Compose multiple mutators into a single mutator
+ * @param {...Function} mutators - Mutators to compose
+ * @returns {Function} Composed mutator
+ */
+const compose = (...mutators) => (state) =>
+  mutators.reduce((currentState, mutator) => mutator(currentState), state);
+
+/**
+ * Double a number
+ * @param {number} x - Number to double
+ * @returns {number} Doubled value
+ */
+const double = (x) => x * 2;
+
+/**
+ * Add 10 to a number
+ * @param {number} x - Number to increment
+ * @returns {number} Incremented value
+ */
+const addTen = (x) => x + 10;
+
+// Compose mutators
+const doubleThenAddTen = compose(double, addTen);
+
+const state = new Understate({ initial: 5 });
+
+state.set(doubleThenAddTen)
+  .then((result) => console.log(result)) // 20 (5 * 2 + 10)
+  .catch((error) => console.error('Error:', error));
+```
+
+### Pattern 2: Conditional Mutations
+
+Implement conditional logic within mutators:
+
+```javascript
+/**
+ * Conditional builder - applies mutator only if condition is met
+ * @param {Function} predicate - Condition function
+ * @param {Function} mutator - Mutator to apply if condition is true
+ * @returns {Function} Conditional mutator
+ */
+const when = (predicate, mutator) => (state) =>
+  predicate(state) ? mutator(state) : state;
+
+/**
+ * Check if value is below maximum
+ * @param {number} max - Maximum value
+ * @returns {Function} Predicate function
+ */
+const isBelow = (max) => (value) => value < max;
+
+// Only increment if below 10
+const incrementIfBelow10 = when(isBelow(10), increment);
+
+const counter = new Understate({ initial: 9 });
+counter.subscribe(log);
+
+counter.set(incrementIfBelow10)
+  .catch((error) => console.error('Error:', error)); // 10
+
+counter.set(incrementIfBelow10)
+  .catch((error) => console.error('Error:', error)); // 10 (no change)
+```
+
+### Pattern 3: State Validation
+
+Add validation to ensure state integrity:
+
+```javascript
+/**
+ * Validate builder - wraps mutator with validation
+ * @param {Function} validator - Validation function
+ * @param {Function} mutator - Mutator to validate
+ * @returns {Function} Validated mutator
+ */
+const validate = (validator, mutator) => (state) => {
+  const newState = mutator(state);
+
+  if (!validator(newState)) {
+    throw new Error('Invalid state produced by mutator');
+  }
+
+  return newState;
+};
+
+/**
+ * Check if value is positive
+ * @param {number} value - Value to check
+ * @returns {boolean} True if positive
+ */
+const isPositive = (value) => value >= 0;
+
+// Create validated decrement that prevents negative numbers
+/**
+ * Decrement by 1
+ * @param {number} x - Value to decrement
+ * @returns {number} Decremented value
+ */
+const decrement = (x) => x - 1;
+
+const validatedDecrement = validate(isPositive, decrement);
+
+const positiveCounter = new Understate({ initial: 1 });
+
+positiveCounter.set(validatedDecrement)
+  .then(log) // 0
+  .catch((error) => console.error('Error:', error));
+
+positiveCounter.set(validatedDecrement)
+  .catch((error) => console.error('Validation failed:', error)); // Error: Invalid state
+```
+
+### Pattern 4: Time-Travel Debugging
+
+Leverage indexation for time-travel debugging:
+
+```javascript
+/**
+ * @typedef {Object} StateHistory
+ * @property {Understate} state - The state instance
+ * @property {Array<string>} history - Array of state IDs
+ */
+
+/**
+ * Create a state manager with history tracking
+ * @param {*} initial - Initial state value
+ * @returns {StateHistory} State with history
+ */
+const createHistoryState = (initial) => {
+  const state = new Understate({ initial, index: true });
+  const history = [];
+
+  // Track all state IDs
+  state.subscribe((_, id) => {
+    if (id) history.push(id);
+  });
+
+  return { state, history };
+};
+
+/**
+ * Go back to a previous state
+ * @param {StateHistory} historyState - State with history
+ * @param {number} steps - Number of steps to go back
+ * @returns {Promise} Promise resolved with historical state
+ */
+const goBack = (historyState, steps) => {
+  const { state, history } = historyState;
+  const targetIndex = history.length - steps - 1;
+
+  if (targetIndex < 0) {
+    return Promise.reject(new Error('Cannot go back that far'));
+  }
+
+  const targetId = history[targetIndex];
+  return state.get(targetId);
+};
+
+// Usage
+const { state, history } = createHistoryState(0);
+
+const runHistoryExample = async () => {
+  try {
+    await state.set(increment, { index: true });
+    await state.set(increment, { index: true });
+    await state.set(increment, { index: true });
+
+    // Current state is 3
+    const current = await state.get();
+    console.log('Current:', current); // 3
+
+    // Go back 2 steps
+    const previous = await goBack({ state, history }, 2);
+    console.log('2 steps back:', previous); // 1
+  } catch (error) {
+    console.error('Error:', error);
+  }
+};
+
+runHistoryExample();
+```
+
+### Pattern 5: Async/Await with Error Handling
+
+Modern async/await patterns for cleaner code:
+
+```javascript
+/**
+ * Fetch data builder - simulates API call
+ * @param {string} url - URL to fetch
+ * @returns {Function} Async mutator
+ */
+const fetchData = (url) => async (state) => {
+  try {
+    // Simulate API call
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return {
+      ...state,
+      data,
+      loading: false,
+      error: null
+    };
+  } catch (error) {
+    return {
+      ...state,
+      data: null,
+      loading: false,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Set loading state
+ * @param {Object} state - Current state
+ * @returns {Object} State with loading flag
+ */
+const setLoading = (state) => ({
+  ...state,
+  loading: true,
+  error: null
+});
+
+// Usage with async/await
+const dataState = new Understate({
+  initial: { data: null, loading: false, error: null },
+  asynchronous: true
+});
+
+const loadData = async () => {
+  try {
+    // Set loading state
+    await dataState.set(setLoading);
+
+    // Fetch data
+    await dataState.set(fetchData('https://api.example.com/data'));
+
+    const finalState = await dataState.get();
+    console.log('Data loaded:', finalState);
+  } catch (error) {
+    console.error('Failed to load data:', error);
+  }
+};
+```
+
+### Pattern 6: Multiple Subscribers with Different Concerns
+
+Separate concerns using multiple subscribers:
+
+```javascript
+/**
+ * Create logger subscriber
+ * @param {string} prefix - Prefix for log messages
+ * @returns {Function} Subscriber function
+ */
+const createLogger = (prefix) => (state) => {
+  console.log(`[${prefix}]`, state);
+};
+
+/**
+ * Create persistence subscriber
+ * @param {string} key - Storage key
+ * @returns {Function} Subscriber function
+ */
+const createPersister = (key) => (state) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(state));
+  } catch (error) {
+    console.error('Failed to persist state:', error);
+  }
+};
+
+/**
+ * Create analytics subscriber
+ * @param {Function} analyticsService - Analytics service
+ * @returns {Function} Subscriber function
+ */
+const createAnalytics = (analyticsService) => (state, id) => {
+  try {
+    analyticsService.track('state_changed', {
+      stateId: id,
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    console.error('Failed to track analytics:', error);
+  }
+};
+
+// Usage
+const appState = new Understate({ initial: { count: 0 }, index: true });
+
+// Multiple subscribers for different concerns
+const loggerUnsub = appState.subscribe(createLogger('APP'));
+const persisterUnsub = appState.subscribe(createPersister('app-state'));
+const analyticsUnsub = appState.subscribe(
+  createAnalytics({ track: (event, data) => console.log(event, data) })
+);
+
+// All subscribers are notified of changes
+appState.set((state) => ({ count: state.count + 1 }))
+  .catch((error) => console.error('Error:', error));
+```
 
 ### Redux Comparison
 
@@ -473,9 +1239,7 @@ messages.set(addMessageAsync('Hello'))
 
 Actions are similar, but are less flexible in Redux
 
-
 Setting state using an "action" -- Here, the "action" mustn't be of any specific format -- its schema is defined by how the router interprets it
-
 
 ```javascript
 Understate#.set(router(action));
@@ -494,11 +1258,13 @@ Redux#store.dispatch(action);
 Recall the function signature a **router**:
 
 ```javascript
-
-action => state => {/*some combination of closure, "action parameters, and "state"*/};
+action => state => {
+  /* some combination of closure, "action" parameters, and "state" */
+  return newState;
+};
 ```
 
-This is essentially the same signature as a Redux reducer, who's first had it's parameters reversed, and then had Schönfinkeling applied.
+This is essentially the same signature as a Redux reducer, which first had its parameters reversed, and then had Schönfinkeling applied.
 
 ```javascript
 action => previousState => newState
@@ -511,7 +1277,7 @@ This API is designed for ECMAScript 6 (2015) and above. It makes no assumptions 
 ### Installation & Import
 
 ```javascript
-import Understate from 'Understate';
+import Understate from 'understate';
 ```
 
 ---
