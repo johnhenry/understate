@@ -271,9 +271,3 @@ export class Understate<T = any> {
  * const stateId = generateId(); // "384756201938475"
  */
 export function generateId(): string;
-
-/**
- * Default export for backward compatibility.
- * Prefer using the named export `Understate` in new code.
- */
-export default Understate;

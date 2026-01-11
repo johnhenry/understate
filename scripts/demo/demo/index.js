@@ -1,4 +1,4 @@
-import Understate from './../PROJECT/dist';
+import { Understate } from './../PROJECT/dist';
 const log   = value => console.log(value);
 const increment = x => x + 1;
 const state     = new Understate({initial: 0});

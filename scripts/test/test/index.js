@@ -1,5 +1,5 @@
 //Imports-----------------------------------------------------------------------
-import Understate from './../PROJECT/dist';
+import { Understate } from './../PROJECT/dist';
 import assert from 'assert';
 import {getStorage, setLatest, LATESTID} from './storage';
 //Utilities-------------------------------------------------------------------
