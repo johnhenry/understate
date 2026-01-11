@@ -13,29 +13,52 @@
 
 ---
 
-This was inspired by [Redux](https://github.com/rackt/redux/) along with another [old project of mine](https://github.com/johnhenry/polyfill-function).
+## Overview
 
-Understate aims to be similar to Redux, but with some parts abstracted out of the core library using higher-order functional concepts.
+Understate is a lightweight, functional state manager inspired by [Redux](https://github.com/rackt/redux/). It uses higher-order functions and pure mutators to manage application state, with built-in support for state indexing, time-travel debugging, and asynchronous operations.
 
-In addition, Understate provides a mechanism for indexing and retrieve states by *id*.
+**Key Features:**
+- **Functional & Pure**: State updates through pure mutator functions
+- **Flexible**: No enforced immutability, but designed to work beautifully with immutable patterns
+- **Powerful**: Built-in state indexing for undo/redo and time-travel debugging
+- **Async-Ready**: First-class support for asynchronous state updates
+- **Lightweight**: Zero dependencies, minimal API surface
+- **Framework Agnostic**: Works with React, Vue, Node.js, or vanilla JavaScript
 
-Understate does not enforce immutability. However, using immutable objects as values for state has number advantages related to performance, correctness, and reasonability. Consider using it in conjunction with a library such as [Immutable](https://github.com/facebook/immutable-js/).
+## Table of Contents
+
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+  - [Your First State Manager](#your-first-state-manager)
+  - [Common Use Cases](#common-use-cases)
+  - [Integration Examples](#integration-examples)
+  - [Quick Tips](#quick-tips)
+- [Core Concepts](#core-concepts)
+  - [Basic Usage](#basic-usage)
+  - [Mutators](#mutators)
+  - [Builders](#builders)
+  - [Routers](#routers)
+  - [Indexation](#indexation)
+  - [Asynchronous Mutators](#asynchronous-mutators)
+- [Advanced Patterns](#advanced-usage-patterns)
+- [API Reference](#api-reference)
+- [Redux Comparison](#redux-comparison)
 
 ## Installation
 
-Understate can be installed via npm or yarn:
+Install Understate using your preferred package manager:
 
-**Using npm:**
+**npm:**
 ```bash
 npm install understate
 ```
 
-**Using yarn:**
+**yarn:**
 ```bash
 yarn add understate
 ```
 
-**Using pnpm:**
+**pnpm:**
 ```bash
 pnpm add understate
 ```
@@ -484,18 +507,14 @@ const state = new Understate({
 
 ### Next Steps
 
-- **Learn the Basics**: Read the [Basic Usage](#basic-usage) section for detailed explanations
+- **Learn the Basics**: Read the [Core Concepts](#core-concepts) section for detailed explanations
 - **Understand Mutators**: Explore [Mutators](#mutators) and [Builders](#builders) for advanced patterns
 - **Handle Complex Logic**: Check out [Routers](#routers) for action dispatching
 - **Work with Async**: See [Async Mutators](#asynchronous-mutators) for async operations
 - **Master Advanced Patterns**: Review [Advanced Usage Patterns](#advanced-usage-patterns)
 - **API Reference**: Consult the [API Reference](#api-reference) for complete method documentation
 
-## About
-Understate works by creating objects that ingest *mutator* functions to update their *internal state*.
-Wait, what?!
-
-...Okay, let's start over... maybe if we just jump right into it...
+## Core Concepts
 
 ### Basic Usage
 
@@ -595,123 +614,11 @@ state.set(increment)
   .catch((error) => console.error('Error:', error)); // Nothing logged
 ```
 
-### Indexation
-
-Understate objects track their state internally.
-
-Each Understate object associates an id with its value whenever its value is updated. This can be accessed from the **"id"** method.
-
-```javascript
-const state = new Understate({ initial: 0 });
-
-// Get current state ID
-const initialId = state.id();
-console.log(initialId); // *<ID>
-
-state.set(increment)
-  .then(() => {
-    const newId = state.id();
-    console.log(newId); // *<ID(Different)>
-    console.log(initialId !== newId); // true
-  })
-  .catch((error) => console.error('Error:', error));
-```
-
-Passing a _truthy_ "index" config option to the **"set"** function will cause its id to be passed as a second argument to the function passed to subscribe.
-
-```javascript
-/**
- * Logger with ID - logs both value and state ID
- * @param {*} value - The state value
- * @param {string} [id] - The state ID (when indexing is enabled)
- * @returns {void}
- */
-const logId = (value, id) => {
-  if (id) {
-    console.log(`${id}:${value}`);
-  } else {
-    console.log(value);
-  }
-};
-
-const state = new Understate({ initial: 0 });
-state.subscribe(logId);
-
-state.set(increment, { index: true })
-  .catch((error) => console.error('Error:', error)); // *<ID>:1
-
-state.set(increment, { index: true })
-  .catch((error) => console.error('Error:', error)); // *<ID>:2
-
-state.set(increment, { index: true })
-  .catch((error) => console.error('Error:', error)); // *<ID>:3
-```
-
-Passing a _truthy_ "index" config option to the **"set"** function will also cause the Understate object to internally index its state by id. This id can later be used to access any indexed states by passing it to the **"get"** method.
-
-```javascript
-const state = new Understate({ initial: 0 });
-
-state.subscribe((value, id) => {
-  // Retrieve historical state after delay
-  setTimeout(() => {
-    state.get(id)
-      .then(log)
-      .catch((error) => console.error('Error retrieving state:', error));
-  }, 5000);
-});
-
-state.set(increment, { index: true })
-  .catch((error) => console.error('Error:', error)); // Logs: 1 (After 5 seconds)
-
-state.set(increment, { index: true })
-  .catch((error) => console.error('Error:', error)); // Logs: 2 (After 5 seconds)
-
-state.set(increment, { index: true })
-  .catch((error) => console.error('Error:', error)); // Logs: 3 (After 5 seconds)
-```
-
-Passing a _truthy_ index option to the constructor will cause the set function to automatically index values.
-
-```javascript
-const state = new Understate({ initial: 0, index: true });
-state.subscribe(logId);
-
-// Automatically indexed
-state.set(increment)
-  .catch((error) => console.error('Error:', error)); // *<ID>:1
-
-state.set(increment)
-  .catch((error) => console.error('Error:', error)); // *<ID>:2
-
-// Override auto-indexing for this call
-state.set(increment, { index: false })
-  .catch((error) => console.error('Error:', error)); // undefined:3
-```
-
-If not already indexed, you can index the current state by passing a _truthy_ argument to the id method.
-
-```javascript
-const state = new Understate({ initial: 0 });
-
-state.set(increment)
-  .then(() => {
-    // Index current state and get its ID
-    const id = state.id(true);
-
-    return state.get(id);
-  })
-  .then(log) // 1
-  .catch((error) => console.error('Error:', error));
-```
-
-Indexation is a good reason to consider immutability in your application. Using **mutators** (below) that return modified copies of your state without modifying the original ensures that each id points to a uniquely identifiable object.
-
-## Mutators
+### Mutators
 
 **Mutator** functions should be pure functions (they have no side effects) that take in a state and return an updated copy of that state without modifying the original (they respect immutability). With that said, these ideas are pretty much programmatically unenforceable, so if you wish to follow this convention, you'll have to take special care to enforce these properties upon your code yourself.
 
-### Signature
+#### Signature
 
 A **mutator** should have the following function signature:
 
@@ -727,7 +634,7 @@ A **mutator** should have the following function signature:
 };
 ```
 
-### Example
+#### Example
 
 This mutator returns the state incremented by 1
 
@@ -740,26 +647,14 @@ This mutator returns the state incremented by 1
 const increment = (state) => state + 1;
 ```
 
-### Redux Comparison
+### Builders
 
-Setting state using a mutator function in Understate
-
-```javascript
-Understate#.set(mutator);
-```
-
-Setting state using an action object in Redux
-
-```javascript
-Redux#store.dispatch(action);
-```
-
-## Builders
 Since a **mutator** function only takes in a state, any modifications that are made to it must be based on its closure.
 
 We can take advantage of this by creating mutation **builder** functions that takes, as arguments, a set of parameters and return **mutators** that use the parameters in its closure.
 
-### Signature
+#### Signature
+
 A **builder** function should have the following function signature:
 
 ```javascript
@@ -776,7 +671,7 @@ A **builder** function should have the following function signature:
 (...parameters) => /* <Mutator> */;
 ```
 
-### Example
+#### Example
 
 ```javascript
 /**
@@ -794,40 +689,9 @@ const increment = adder(1);
 // adder(1) = x => x + 1;
 ```
 
-### Redux Comparison
+#### Initialization with Constant Function Builders
 
-We can see that a **builder** function and a reducer function from Redux are very similar.
-
-#### Builder Function
-
-```javascript
-(...parameters) => previousState => newState
-```
-
-#### Reducer Function
-
-```javascript
-(previousState, action) => newState
-```
-
-If you were to reverse the parameters in a reducer...
-
-```javascript
-(action, previousState) => newState
-```
-
-and then [Schönfinkel](https://en.wikipedia.org/wiki/Currying) it
-
-```javascript
-action => previousState => newState
-```
-
-you'd end up with a **builder** that takes an "action" as its only parameter
-
-### Initialization with Constant Function Builders
-
-It's often useful to set a state rather than modify it. In this case, we
-can use a function that returns a constant.
+It's often useful to set a state rather than modify it. In this case, we can use a function that returns a constant.
 
 ```javascript
 /**
@@ -876,7 +740,7 @@ state.set(constant(1))
   .catch((error) => console.error('Error:', error)); // 1
 ```
 
-### Using Builders
+#### Using Builders
 
 Using different types of **builders** allows us to elegantly express how we modify an application's state.
 
@@ -1096,13 +960,13 @@ messages.set(addMessage('John.'))
 
 Note: ECMAScript 8 (2017) has a similar new language feature, also called "decorators", that work in a similar way, but can only be applied to class methods.
 
-## Routers
+### Routers
 
 The final piece of the puzzle is the **router**. Its job is to take "action" from another component in the application, and return a **mutator** function to be applied to the current state. It does this by selecting a **builder** based on an "action" and extracting parameters from that "action".
 
 Strictly speaking, **routers** are **builders**, as they take in a parameter, "action", and return a **mutator** function. They are still; however, a useful abstraction when it comes to deciding how to handle updates.
 
-### Signature
+#### Signature
 
 A **router** should have the following signature:
 
@@ -1121,7 +985,7 @@ A **router** should have the following signature:
 ```
 
 
-### Example
+#### Example
 
 This is an application that uses a sample router.
 
@@ -1327,7 +1191,119 @@ processActions();
 // State updated: 0
 ```
 
-## Asynchronous Mutators
+### Indexation
+
+Understate objects track their state internally.
+
+Each Understate object associates an id with its value whenever its value is updated. This can be accessed from the **"id"** method.
+
+```javascript
+const state = new Understate({ initial: 0 });
+
+// Get current state ID
+const initialId = state.id();
+console.log(initialId); // *<ID>
+
+state.set(increment)
+  .then(() => {
+    const newId = state.id();
+    console.log(newId); // *<ID(Different)>
+    console.log(initialId !== newId); // true
+  })
+  .catch((error) => console.error('Error:', error));
+```
+
+Passing a _truthy_ "index" config option to the **"set"** function will cause its id to be passed as a second argument to the function passed to subscribe.
+
+```javascript
+/**
+ * Logger with ID - logs both value and state ID
+ * @param {*} value - The state value
+ * @param {string} [id] - The state ID (when indexing is enabled)
+ * @returns {void}
+ */
+const logId = (value, id) => {
+  if (id) {
+    console.log(`${id}:${value}`);
+  } else {
+    console.log(value);
+  }
+};
+
+const state = new Understate({ initial: 0 });
+state.subscribe(logId);
+
+state.set(increment, { index: true })
+  .catch((error) => console.error('Error:', error)); // *<ID>:1
+
+state.set(increment, { index: true })
+  .catch((error) => console.error('Error:', error)); // *<ID>:2
+
+state.set(increment, { index: true })
+  .catch((error) => console.error('Error:', error)); // *<ID>:3
+```
+
+Passing a _truthy_ "index" config option to the **"set"** function will also cause the Understate object to internally index its state by id. This id can later be used to access any indexed states by passing it to the **"get"** method.
+
+```javascript
+const state = new Understate({ initial: 0 });
+
+state.subscribe((value, id) => {
+  // Retrieve historical state after delay
+  setTimeout(() => {
+    state.get(id)
+      .then(log)
+      .catch((error) => console.error('Error retrieving state:', error));
+  }, 5000);
+});
+
+state.set(increment, { index: true })
+  .catch((error) => console.error('Error:', error)); // Logs: 1 (After 5 seconds)
+
+state.set(increment, { index: true })
+  .catch((error) => console.error('Error:', error)); // Logs: 2 (After 5 seconds)
+
+state.set(increment, { index: true })
+  .catch((error) => console.error('Error:', error)); // Logs: 3 (After 5 seconds)
+```
+
+Passing a _truthy_ index option to the constructor will cause the set function to automatically index values.
+
+```javascript
+const state = new Understate({ initial: 0, index: true });
+state.subscribe(logId);
+
+// Automatically indexed
+state.set(increment)
+  .catch((error) => console.error('Error:', error)); // *<ID>:1
+
+state.set(increment)
+  .catch((error) => console.error('Error:', error)); // *<ID>:2
+
+// Override auto-indexing for this call
+state.set(increment, { index: false })
+  .catch((error) => console.error('Error:', error)); // undefined:3
+```
+
+If not already indexed, you can index the current state by passing a _truthy_ argument to the id method.
+
+```javascript
+const state = new Understate({ initial: 0 });
+
+state.set(increment)
+  .then(() => {
+    // Index current state and get its ID
+    const id = state.id(true);
+
+    return state.get(id);
+  })
+  .then(log) // 1
+  .catch((error) => console.error('Error:', error));
+```
+
+Indexation is a good reason to consider immutability in your application. Using **mutators** (below) that return modified copies of your state without modifying the original ensures that each id points to a uniquely identifiable object.
+
+### Asynchronous Mutators
 
 You can modify an Understate instance at creation to take **asynchronous mutators** by passing a truthy "asynchronous" flag to the config function. Like normal (synchronous) **mutators** these functions take a state as an argument. Instead of returning a modified state; however, they return a promise resolved with the modified state.
 
@@ -1715,41 +1691,61 @@ appState.set((state) => ({ count: state.count + 1 }))
   .catch((error) => console.error('Error:', error));
 ```
 
-### Redux Comparison
+## Redux Comparison
 
-#### Actions
+### Actions & Reducers
 
-Actions are similar, but are less flexible in Redux
-
-Setting state using an "action" -- Here, the "action" mustn't be of any specific format -- its schema is defined by how the router interprets it
+**Setting state in Understate using a mutator:**
 
 ```javascript
-Understate#.set(router(action));
+Understate#.set(mutator);
 ```
 
-Setting state in Redux using an action -- Here, an action is a loosely formatted JSON object with a mandatory "type" attribute
+**Setting state in Redux using an action:**
 
 ```javascript
 Redux#store.dispatch(action);
 ```
 
-#### Reducers
+### Routers vs Reducers
 
-**Routers/builders** are essentially reducers from Redux that have been abstracted out of the core library.
+**Routers/builders** in Understate are essentially reducers from Redux that have been abstracted out of the core library.
 
-Recall the function signature a **router**:
+Setting state using an "action" in Understate - the "action" schema is defined by how the router interprets it:
 
 ```javascript
-action => state => {
-  /* some combination of closure, "action" parameters, and "state" */
-  return newState;
-};
+Understate#.set(router(action));
 ```
 
-This is essentially the same signature as a Redux reducer, which first had its parameters reversed, and then had Schönfinkeling applied.
+**Router signature** (curried reducer):
 
 ```javascript
 action => previousState => newState
+```
+
+**Redux reducer signature:**
+
+```javascript
+(previousState, action) => newState
+```
+
+If you were to reverse the parameters in a Redux reducer and [curry](https://en.wikipedia.org/wiki/Currying) it, you'd end up with an Understate **router**.
+
+### Action Flexibility
+
+Actions in Understate are more flexible than Redux - they don't need a specific format:
+
+**Redux:** An action must be a JSON object with a mandatory "type" attribute
+
+```javascript
+{ type: 'INCREMENT', payload: 1 }
+```
+
+**Understate:** An action can be any format your router handles
+
+```javascript
+{ builder: 'add', parameter: 1 }
+// or any other schema you design
 ```
 
 ## API Reference
@@ -2183,6 +2179,8 @@ const badMutator = state => {
 };
 ```
 
-## Installation Notes
+---
 
-Run `npm install` to install dependencies.
+## License
+
+See the [LICENSE](https://github.com/johnhenry/understate/blob/master/LICENSE) file for details.
