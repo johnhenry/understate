@@ -1888,3 +1888,5 @@ const badMutator = state => {
   return state;
 };
 ```
+
+## Testing Section
