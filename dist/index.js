@@ -27,13 +27,49 @@ const generateId = function() {
         if (typeof randomValue !== 'number' || isNaN(randomValue) || randomValue < 0 || randomValue >= 1) {
             throw new Error('generateId(): Failed to generate valid random number');
         }
-        const idString = String(randomValue).substr(2, 15);
+        const idString = String(randomValue).slice(2, 17);
         if (!idString || idString.length === 0) {
             throw new Error('generateId(): Generated ID string is empty');
         }
         return idString;
     } catch (error) {
         throw new Error(`generateId(): Error generating ID - ${error.message}`);
+    }
+};
+
+/**
+ * Validates email format using a regex pattern.
+ * Checks if the provided string matches the standard email format.
+ *
+ * @function validateEmail
+ * @param {string} email - The email address to validate
+ * @returns {boolean} True if the email format is valid, false otherwise
+ * @throws {TypeError} If email parameter is not a string
+ * @throws {TypeError} If email parameter is null or undefined
+ * @public
+ * @example
+ * validateEmail('user@example.com'); // true
+ * validateEmail('invalid.email'); // false
+ * validateEmail('test@domain.co.uk'); // true
+ */
+const validateEmail = function(email) {
+    // Validate input parameter
+    if (email === null || email === undefined) {
+        throw new TypeError('validateEmail(): email parameter is required, received ' + email);
+    }
+    if (typeof email !== 'string') {
+        throw new TypeError('validateEmail(): email parameter must be a string, received ' + typeof email);
+    }
+
+    try {
+        // RFC 5322 compliant email regex pattern
+        // Matches most common email formats while being reasonably strict
+        // Disallows consecutive dots, leading/trailing dots, and invalid characters
+        const emailRegex = /^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+        return emailRegex.test(email);
+    } catch (error) {
+        throw new Error(`validateEmail(): Error validating email - ${error.message}`);
     }
 };
 
@@ -99,8 +135,8 @@ const generateId = function() {
  * - Method chaining for fluent APIs
  *
  * @class Understate
- * @param {UnderstateConfig} [config={}] - Configuration options for the instance
- * @returns {Understate} A new Understate instance
+ * @param {UnderstateConfig} [config={}] - Configuration object with optional properties: initial (any - the starting state value), index (boolean - enables automatic state indexing), asynchronous (boolean - enables async mutator support)
+ * @returns {Understate} A new Understate instance with methods: set(), s(), get(), subscribe(), and id()
  * @throws {TypeError} If config parameter is not an object or null
  * @throws {TypeError} If index parameter is not a boolean when provided
  * @throws {TypeError} If asynchronous parameter is not a boolean when provided
@@ -203,9 +239,9 @@ const Understate = function({
  *
  * @memberof Understate
  * @method set
- * @param {MutatorFunction} mutator - Function to transform the current state
- * @param {SetConfig} [config={}] - Configuration options for this update
- * @returns {Promise<*>} Promise resolving to the new state (and state ID if indexing is enabled)
+ * @param {MutatorFunction} mutator - Function to transform the current state. Receives the current state as a parameter and should return the new state value (or a Promise resolving to the new state for async operations)
+ * @param {SetConfig} [config={}] - Configuration options for this update. Optional object with properties: index (boolean), asynchronous (boolean)
+ * @returns {Promise<*>} Promise that resolves to the new state value. If indexing is enabled (via config.index or instance default), the promise callback also receives the state ID as a second parameter
  * @throws {TypeError} If mutator is not a function
  * @throws {TypeError} If config is not an object when provided
  * @throws {TypeError} If config.index is not a boolean when provided
@@ -252,20 +288,22 @@ Understate.prototype.set = function(mutator, config = {}) {
         throw new Error(`set(): Failed to process config parameter - ${error.message}`);
     }
 
-    var index = config.index;
-    var asynchronous = config.asynchronous;
+    const { index: configIndex, asynchronous: configAsync } = config;
 
     // Validate index if provided
-    if (config.hasOwnProperty('index') && index !== null && index !== undefined && typeof index !== 'boolean') {
-        throw new TypeError('set(): config.index must be a boolean when provided, received ' + typeof index);
+    if (configIndex !== undefined && configIndex !== null && typeof configIndex !== 'boolean') {
+        throw new TypeError('set(): config.index must be a boolean when provided, received ' + typeof configIndex);
     }
 
     // Validate asynchronous if provided
-    if (config.hasOwnProperty('asynchronous') && asynchronous !== null && asynchronous !== undefined && typeof asynchronous !== 'boolean') {
-        throw new TypeError('set(): config.asynchronous must be a boolean when provided, received ' + typeof asynchronous);
+    if (configAsync !== undefined && configAsync !== null && typeof configAsync !== 'boolean') {
+        throw new TypeError('set(): config.asynchronous must be a boolean when provided, received ' + typeof configAsync);
     }
 
-    var self = this;
+    const index = configIndex;
+    const asynchronous = configAsync;
+
+    const self = this;
 
     // Validate state before calling mutator
     var currentState;
@@ -282,59 +320,69 @@ Understate.prototype.set = function(mutator, config = {}) {
         throw new Error(`set(): Mutator function threw an error - ${error.message}`);
     }
 
-    asynchronous = asynchronous || (asynchronous !== false && self._asynchronous);
-    index = index || (index !== false && self._index);
+    const shouldUseAsync = asynchronous !== undefined ? asynchronous : self._asynchronous;
+    const shouldIndex = index !== undefined ? index : self._index;
 
     return new Promise((resolve, reject) => {
         try {
-            if (asynchronous) {
+            if (shouldUseAsync) {
                 // Validate that newState[0] is a Promise
                 if (!newState[0] || typeof newState[0].then !== 'function') {
                     return reject(new TypeError('set(): In asynchronous mode, mutator must return a Promise, received ' + typeof newState[0]));
                 }
-                return newState[0].then(newState => {
+                return newState[0].then(resolvedState => {
                     try {
-                        newState = [newState];
-                        this._setState(newState[0]);
+                        this._setState(resolvedState);
                         this._setId(generateId(self._getState()));
-                        if (index) {
-                            self._indexed.set(self._getId(), self._getState());
-                            newState.push(self._getId());
+
+                        const resultArgs = [resolvedState];
+                        if (shouldIndex) {
+                            const stateId = self._getId();
+                            self._indexed.set(stateId, resolvedState);
+                            resultArgs.push(stateId);
                         }
+
                         self._subscriptions.forEach(sub => {
                             try {
-                                sub.apply(self, newState);
+                                sub.apply(self, resultArgs);
                             } catch (error) {
                                 // Log but don't fail if a subscription throws
                                 console.error(`set(): Subscription callback error - ${error.message}`);
                             }
                         });
-                        return resolve.apply(self, newState);
+                        return resolve.apply(self, resultArgs);
                     } catch (error) {
                         return reject(new Error(`set(): Failed to update state asynchronously - ${error.message}`));
                     }
                 }).catch(error => {
-                    reject(new Error(`set(): Asynchronous mutator rejected - ${error.message || error}`));
+                    return reject(new Error(`set(): Asynchronous mutator rejected - ${error.message || error}`));
                 });
             } else {
                 this._setState(newState[0]);
                 this._setId(generateId(self._getState()));
-                if (index) {
-                    self._indexed.set(self._getId(), self._getState());
-                    newState.push(self._getId());
+
+                const resultArgs = [newState[0]];
+                if (shouldIndex) {
+                    const stateId = self._getId();
+                    self._indexed.set(stateId, newState[0]);
+                    resultArgs.push(stateId);
                 }
+
                 self._subscriptions.forEach(sub => {
                     try {
-                        sub.apply(self, newState);
+                        sub.apply(self, resultArgs);
                     } catch (error) {
                         // Log but don't fail if a subscription throws
                         console.error(`set(): Subscription callback error - ${error.message}`);
                     }
                 });
-                return resolve.apply(self, newState);
+                return resolve.apply(self, resultArgs);
             }
         } catch (error) {
-            reject(new Error(`set(): Unexpected error during state update - ${error.message}`));
+            if (error.message && error.message.startsWith('set():')) {
+                return reject(error);
+            }
+            return reject(new Error(`set(): Unexpected error during state update - ${error.message}`));
         }
     });
 };
@@ -347,9 +395,9 @@ Understate.prototype.set = function(mutator, config = {}) {
  *
  * @memberof Understate
  * @method s
- * @param {MutatorFunction} mutator - Function to transform the current state
- * @param {SetConfig} [config={}] - Configuration options for this update
- * @returns {Understate} The Understate instance for method chaining
+ * @param {MutatorFunction} mutator - Function to transform the current state. Receives the current state as a parameter and should return the new state value
+ * @param {SetConfig} [config={}] - Configuration options for this update. Optional object with properties: index (boolean), asynchronous (boolean)
+ * @returns {Understate} The Understate instance (this) to enable method chaining with other instance methods
  * @throws {TypeError} If mutator is not a function
  * @throws {TypeError} If config is not an object when provided
  * @throws {Error} If set() throws an error
@@ -393,8 +441,8 @@ Understate.prototype.s = function(mutator, config = {}) {
  *
  * @memberof Understate
  * @method get
- * @param {string|boolean} [id=false] - The ID of a previously indexed state, or false for current state
- * @returns {Promise<*>} Promise resolving to the requested state value
+ * @param {string|boolean} [id=false] - The ID string of a previously indexed state to retrieve, or false/undefined to retrieve the current state. Must be a non-empty string when provided
+ * @returns {Promise<*>} Promise that resolves to the requested state value. When retrieving current state (no id), the promise callback receives both the state value and current state ID as parameters
  * @throws {TypeError} If id is provided but is not a string or boolean
  * @throws {Error} If state retrieval fails
  *
@@ -420,20 +468,22 @@ Understate.prototype.get = function(id = false) {
 
     return new Promise((resolve, reject) => {
         try {
-            if (id === false) {
+            // Get current state
+            if (id === false || id === undefined || id === null) {
                 const state = this._getState();
-                const currentId = this._getId();
-                return resolve(state, currentId);
+                return resolve(state);
             }
 
+            // Get indexed state by ID
             if (!this._indexed || typeof this._indexed.get !== 'function') {
                 return reject(new Error('get(): Indexed storage is not available. Ensure indexing is enabled.'));
             }
 
-            const state = this._indexed.get(id);
-            if (state === undefined) {
-                return reject(new Error(`get(): No state found for id "${id}"`));
+            if (!this._indexed.has(id)) {
+                return reject(new Error(`get(): No state found for id "${id}". State may not have been indexed.`));
             }
+
+            const state = this._indexed.get(id);
             resolve(state);
         } catch (error) {
             reject(new Error(`get(): Failed to retrieve state - ${error.message}`));
@@ -454,8 +504,8 @@ Understate.prototype.get = function(id = false) {
  *
  * @memberof Understate
  * @method subscribe
- * @param {SubscriptionCallback} subscription - Callback invoked after each state update
- * @returns {SubscriptionPointer} Object with unsubscribe method and inherited Understate methods
+ * @param {SubscriptionCallback} subscription - Callback function to be invoked after each state update. Receives the new state value as the first parameter, and optionally the state ID as the second parameter if indexing is enabled
+ * @returns {SubscriptionPointer} A subscription pointer object that inherits all Understate methods and includes an unsubscribe() method to cancel the subscription. This enables nested subscriptions and chaining
  * @throws {TypeError} If subscription is not a function
  * @throws {TypeError} If subscription is null or undefined
  * @throws {Error} If subscription setup fails
@@ -491,20 +541,20 @@ Understate.prototype.subscribe = function(subscription) {
     }
 
     try {
-        var original = this;
+        const original = this;
 
         if (!original._subscriptions || typeof original._subscriptions.add !== 'function') {
             throw new Error('subscribe(): Subscriptions set is not properly initialized');
         }
 
         original._subscriptions.add(subscription);
-        var pointer = Object.create(original);
+        const pointer = Object.create(original);
 
         /**
          * Unsubscribes the callback from state updates.
          *
-         * @param {boolean|number} [unsubscribeParents=false] - If true, unsubscribes parent subscriptions too
-         * @returns {Understate} The original Understate instance
+         * @param {boolean|number} [unsubscribeParents=false] - If true, unsubscribes parent subscriptions too. If a number, unsubscribes that many levels of parent subscriptions (must be a non-negative integer)
+         * @returns {Understate} The original Understate instance to enable further operations
          * @throws {TypeError} If unsubscribeParents is not a boolean or number when provided
          * @throws {RangeError} If unsubscribeParents is a negative number
          */
@@ -565,8 +615,8 @@ Understate.prototype.subscribe = function(subscription) {
  *
  * @memberof Understate
  * @method id
- * @param {boolean} [index=false] - If true, indexes the current state with its ID
- * @returns {string} The unique identifier of the current state
+ * @param {boolean} [index=false] - If true, saves the current state to the index with its ID for later retrieval via get(). If false/undefined, only returns the ID without indexing
+ * @returns {string} A 15-character unique identifier string representing the current state
  * @throws {TypeError} If index parameter is not a boolean when provided
  * @throws {Error} If id retrieval fails
  *
@@ -587,7 +637,8 @@ Understate.prototype.id = function(index = false) {
     }
 
     try {
-        if (!this._id) {
+        const currentId = this._getId();
+        if (!currentId) {
             throw new Error('id(): Instance ID is not initialized');
         }
 
@@ -595,14 +646,10 @@ Understate.prototype.id = function(index = false) {
             if (!this._indexed || typeof this._indexed.set !== 'function') {
                 throw new Error('id(): Indexed storage is not available');
             }
-            if (!this._state && this._getState) {
-                const currentState = this._getState();
-                this._indexed.set(this._id, currentState);
-            } else {
-                this._indexed.set(this._id, this._state);
-            }
+            const currentState = this._getState();
+            this._indexed.set(currentId, currentState);
         }
-        return this._id;
+        return currentId;
     } catch (error) {
         throw new Error(`id(): Failed to retrieve or index id - ${error.message}`);
     }
@@ -612,4 +659,6 @@ Understate.prototype.id = function(index = false) {
 // Exports
 //=============================================================================
 
-module.exports = Understate;
+exports.Understate = Understate;
+exports.generateId = generateId;
+exports.validateEmail = validateEmail;

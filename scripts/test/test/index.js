@@ -1,9 +1,9 @@
 //Imports-----------------------------------------------------------------------
-import Understate from './../PROJECT/dist';
+import { Understate } from './../PROJECT/dist';
 import assert from 'assert';
 import {getStorage, setLatest, LATESTID} from './storage';
 //Utilities-------------------------------------------------------------------
- var log = (state, id = undefined) => {
+ const log = (state, id = undefined) => {
    if(id !== undefined) setLatest(id, state);
    console.capture(`ID: ${id}
 STATE: ${state}`);
@@ -13,21 +13,17 @@ STATE: ${state}`);
 {
   describe('Constructor', function() {
     describe('(Empty)', function () {
-      it('It should not have an initial value', function (done) {
+      it('It should not have an initial value', async function () {
         const understate = new Understate();
-        understate.get().then(state=>{
-          assert.equal(state, undefined);
-          done();
-        })
+        const state = await understate.get();
+        assert.equal(state, undefined);
       });
     });
     describe('Initial Value', function () {
-      it('It should have an initial value. ', function (done) {
+      it('It should have an initial value. ', async function () {
         const understate = new Understate({initial:null});
-        understate.get().then(state=>{
-          assert.equal(state, null);
-          done();
-        })
+        const state = await understate.get();
+        assert.equal(state, null);
       });
     });
   });
@@ -66,25 +62,23 @@ STATE: ${state}`);
 {
   describe('Async', function() {
     describe('(Empty)', function () {
-      it('...', function (done) {
+      it('...', async function () {
         //Builders
-        var constant    = a => _ => a;
-        var addMessageAsync  = message => messages => new Promise((resolve, reject)=>{
+        const constant    = a => _ => a;
+        const addMessageAsync  = message => messages => new Promise((resolve, reject)=>{
         //  if(Math.random() < 0.25) return reject(new Error('Simulated Async Failure'));
           return setTimeout(()=>resolve(messages.concat(message)), 0);
         });
         //Mutators
-        var empty       = constant([]);
+        const empty       = constant([]);
         //App
-        var messages    = new Understate({asynchronous:true});
+        const messages    = new Understate({asynchronous:true});
         messages.set(empty,{asynchronous:false});
-        messages.set(addMessageAsync('Hello'))
-          .then(_=>messages.set(addMessageAsync('there'))
-          .then(_=>messages.set(addMessageAsync('John.'))
-          .then(()=>messages.get().then(result=>{
-            assert.deepEqual(result, ["Hello","there","John."]);
-            done();
-          }))));
+        await messages.set(addMessageAsync('Hello'));
+        await messages.set(addMessageAsync('there'));
+        await messages.set(addMessageAsync('John.'));
+        const result = await messages.get();
+        assert.deepEqual(result, ["Hello","there","John."]);
       });
     });
   });

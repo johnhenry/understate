@@ -35,6 +35,42 @@ export const generateId = function() {
     }
 };
 
+/**
+ * Validates email format using a regex pattern.
+ * Checks if the provided string matches the standard email format.
+ *
+ * @function validateEmail
+ * @param {string} email - The email address to validate
+ * @returns {boolean} True if the email format is valid, false otherwise
+ * @throws {TypeError} If email parameter is not a string
+ * @throws {TypeError} If email parameter is null or undefined
+ * @public
+ * @example
+ * validateEmail('user@example.com'); // true
+ * validateEmail('invalid.email'); // false
+ * validateEmail('test@domain.co.uk'); // true
+ */
+export const validateEmail = function(email) {
+    // Validate input parameter
+    if (email === null || email === undefined) {
+        throw new TypeError('validateEmail(): email parameter is required, received ' + email);
+    }
+    if (typeof email !== 'string') {
+        throw new TypeError('validateEmail(): email parameter must be a string, received ' + typeof email);
+    }
+
+    try {
+        // RFC 5322 compliant email regex pattern
+        // Matches most common email formats while being reasonably strict
+        // Disallows consecutive dots, leading/trailing dots, and invalid characters
+        const emailRegex = /^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+        return emailRegex.test(email);
+    } catch (error) {
+        throw new Error(`validateEmail(): Error validating email - ${error.message}`);
+    }
+};
+
 //=============================================================================
 // Type Definitions
 //=============================================================================
@@ -97,8 +133,8 @@ export const generateId = function() {
  * - Method chaining for fluent APIs
  *
  * @class Understate
- * @param {UnderstateConfig} [config={}] - Configuration options for the instance
- * @returns {Understate} A new Understate instance
+ * @param {UnderstateConfig} [config={}] - Configuration object with optional properties: initial (any - the starting state value), index (boolean - enables automatic state indexing), asynchronous (boolean - enables async mutator support)
+ * @returns {Understate} A new Understate instance with methods: set(), s(), get(), subscribe(), and id()
  * @throws {TypeError} If config parameter is not an object or null
  * @throws {TypeError} If index parameter is not a boolean when provided
  * @throws {TypeError} If asynchronous parameter is not a boolean when provided
@@ -201,9 +237,9 @@ export const Understate = function({
  *
  * @memberof Understate
  * @method set
- * @param {MutatorFunction} mutator - Function to transform the current state
- * @param {SetConfig} [config={}] - Configuration options for this update
- * @returns {Promise<*>} Promise resolving to the new state (and state ID if indexing is enabled)
+ * @param {MutatorFunction} mutator - Function to transform the current state. Receives the current state as a parameter and should return the new state value (or a Promise resolving to the new state for async operations)
+ * @param {SetConfig} [config={}] - Configuration options for this update. Optional object with properties: index (boolean), asynchronous (boolean)
+ * @returns {Promise<*>} Promise that resolves to the new state value. If indexing is enabled (via config.index or instance default), the promise callback also receives the state ID as a second parameter
  * @throws {TypeError} If mutator is not a function
  * @throws {TypeError} If config is not an object when provided
  * @throws {TypeError} If config.index is not a boolean when provided
@@ -265,7 +301,7 @@ Understate.prototype.set = function(mutator, config = {}) {
     const index = configIndex;
     const asynchronous = configAsync;
 
-    var self = this;
+    const self = this;
 
     // Validate state before calling mutator
     var currentState;
@@ -317,7 +353,7 @@ Understate.prototype.set = function(mutator, config = {}) {
                         return reject(new Error(`set(): Failed to update state asynchronously - ${error.message}`));
                     }
                 }).catch(error => {
-                    reject(new Error(`set(): Asynchronous mutator rejected - ${error.message || error}`));
+                    return reject(new Error(`set(): Asynchronous mutator rejected - ${error.message || error}`));
                 });
             } else {
                 this._setState(newState[0]);
@@ -341,7 +377,10 @@ Understate.prototype.set = function(mutator, config = {}) {
                 return resolve.apply(self, resultArgs);
             }
         } catch (error) {
-            reject(new Error(`set(): Unexpected error during state update - ${error.message}`));
+            if (error.message && error.message.startsWith('set():')) {
+                return reject(error);
+            }
+            return reject(new Error(`set(): Unexpected error during state update - ${error.message}`));
         }
     });
 };
@@ -354,9 +393,9 @@ Understate.prototype.set = function(mutator, config = {}) {
  *
  * @memberof Understate
  * @method s
- * @param {MutatorFunction} mutator - Function to transform the current state
- * @param {SetConfig} [config={}] - Configuration options for this update
- * @returns {Understate} The Understate instance for method chaining
+ * @param {MutatorFunction} mutator - Function to transform the current state. Receives the current state as a parameter and should return the new state value
+ * @param {SetConfig} [config={}] - Configuration options for this update. Optional object with properties: index (boolean), asynchronous (boolean)
+ * @returns {Understate} The Understate instance (this) to enable method chaining with other instance methods
  * @throws {TypeError} If mutator is not a function
  * @throws {TypeError} If config is not an object when provided
  * @throws {Error} If set() throws an error
@@ -400,8 +439,8 @@ Understate.prototype.s = function(mutator, config = {}) {
  *
  * @memberof Understate
  * @method get
- * @param {string|boolean} [id=false] - The ID of a previously indexed state, or false for current state
- * @returns {Promise<*>} Promise resolving to the requested state value
+ * @param {string|boolean} [id=false] - The ID string of a previously indexed state to retrieve, or false/undefined to retrieve the current state. Must be a non-empty string when provided
+ * @returns {Promise<*>} Promise that resolves to the requested state value. When retrieving current state (no id), the promise callback receives both the state value and current state ID as parameters
  * @throws {TypeError} If id is provided but is not a string or boolean
  * @throws {Error} If state retrieval fails
  *
@@ -463,8 +502,8 @@ Understate.prototype.get = function(id = false) {
  *
  * @memberof Understate
  * @method subscribe
- * @param {SubscriptionCallback} subscription - Callback invoked after each state update
- * @returns {SubscriptionPointer} Object with unsubscribe method and inherited Understate methods
+ * @param {SubscriptionCallback} subscription - Callback function to be invoked after each state update. Receives the new state value as the first parameter, and optionally the state ID as the second parameter if indexing is enabled
+ * @returns {SubscriptionPointer} A subscription pointer object that inherits all Understate methods and includes an unsubscribe() method to cancel the subscription. This enables nested subscriptions and chaining
  * @throws {TypeError} If subscription is not a function
  * @throws {TypeError} If subscription is null or undefined
  * @throws {Error} If subscription setup fails
@@ -500,20 +539,20 @@ Understate.prototype.subscribe = function(subscription) {
     }
 
     try {
-        var original = this;
+        const original = this;
 
         if (!original._subscriptions || typeof original._subscriptions.add !== 'function') {
             throw new Error('subscribe(): Subscriptions set is not properly initialized');
         }
 
         original._subscriptions.add(subscription);
-        var pointer = Object.create(original);
+        const pointer = Object.create(original);
 
         /**
          * Unsubscribes the callback from state updates.
          *
-         * @param {boolean|number} [unsubscribeParents=false] - If true, unsubscribes parent subscriptions too
-         * @returns {Understate} The original Understate instance
+         * @param {boolean|number} [unsubscribeParents=false] - If true, unsubscribes parent subscriptions too. If a number, unsubscribes that many levels of parent subscriptions (must be a non-negative integer)
+         * @returns {Understate} The original Understate instance to enable further operations
          * @throws {TypeError} If unsubscribeParents is not a boolean or number when provided
          * @throws {RangeError} If unsubscribeParents is a negative number
          */
@@ -574,8 +613,8 @@ Understate.prototype.subscribe = function(subscription) {
  *
  * @memberof Understate
  * @method id
- * @param {boolean} [index=false] - If true, indexes the current state with its ID
- * @returns {string} The unique identifier of the current state
+ * @param {boolean} [index=false] - If true, saves the current state to the index with its ID for later retrieval via get(). If false/undefined, only returns the ID without indexing
+ * @returns {string} A 15-character unique identifier string representing the current state
  * @throws {TypeError} If index parameter is not a boolean when provided
  * @throws {Error} If id retrieval fails
  *
@@ -617,11 +656,3 @@ Understate.prototype.id = function(index = false) {
 //=============================================================================
 // Exports
 //=============================================================================
-
-/**
- * Default export for backward compatibility.
- * Prefer using the named export `Understate` in new code.
- *
- * @type {Understate}
- */
-export default Understate;

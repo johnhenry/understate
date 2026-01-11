@@ -21,181 +21,475 @@ In addition, Understate provides a mechanism for indexing and retrieve states by
 
 Understate does not enforce immutability. However, using immutable objects as values for state has number advantages related to performance, correctness, and reasonability. Consider using it in conjunction with a library such as [Immutable](https://github.com/facebook/immutable-js/).
 
-## Quick Start
+## Installation
 
-### Installation
+Understate can be installed via npm or yarn:
 
-Install Understate via npm:
-
+**Using npm:**
 ```bash
 npm install understate
 ```
 
-Or with yarn:
-
+**Using yarn:**
 ```bash
 yarn add understate
 ```
 
-### Minimal Working Example
+**Using pnpm:**
+```bash
+pnpm add understate
+```
 
-Here's the simplest way to get started with Understate:
+### Requirements
+
+- Node.js or a browser environment
+- ECMAScript 6 (ES2015) or later
+- No additional dependencies required
+
+### Importing
+
+**ES6 Modules:**
+```javascript
+import Understate from 'understate';
+```
+
+**CommonJS:**
+```javascript
+const Understate = require('understate');
+```
+
+**TypeScript:**
+```typescript
+import Understate from 'understate';
+// Note: TypeScript definitions are inferred from the JavaScript implementation
+```
+
+## Quick Start
+
+### Your First State Manager
+
+Here's the simplest way to get started with Understate in just 3 steps:
 
 ```javascript
 import Understate from 'understate';
 
-// Create a new state instance with an initial value
+// Step 1: Create a new state instance with an initial value
 const state = new Understate({ initial: 0 });
 
-// Subscribe to state changes
+// Step 2: Subscribe to state changes (optional, but useful for debugging)
 state.subscribe(value => console.log('State updated:', value));
 
-// Define a mutator function to update state
+// Step 3: Update the state using a mutator function
 const increment = x => x + 1;
 
-// Update the state
 state.set(increment); // Logs: "State updated: 1"
 state.set(increment); // Logs: "State updated: 2"
+
+// Get the current state
+state.get().then(value => console.log('Current state:', value)); // 2
 ```
 
 ### Common Use Cases
 
-#### Counter Application
+#### Example 1: Simple Counter
 
-A simple counter with increment, decrement, and reset functionality:
+A basic counter demonstrating core concepts:
 
 ```javascript
 import Understate from 'understate';
 
-// Define mutator builders
-const add = amount => value => value + amount;
-const reset = () => _ => 0;
-
-// Create state
+// Create a counter starting at 0
 const counter = new Understate({ initial: 0 });
-counter.subscribe(value => console.log('Counter:', value));
+
+// Watch for changes
+counter.subscribe(value => {
+  console.log('Counter:', value);
+  // Update your UI here
+  document.getElementById('count').textContent = value;
+});
+
+// Define operations
+const increment = x => x + 1;
+const decrement = x => x - 1;
+const add = amount => x => x + amount;
+const reset = () => 0;
 
 // Use the counter
-counter.set(add(1));      // Counter: 1
-counter.set(add(5));      // Counter: 6
-counter.set(add(-2));     // Counter: 4
-counter.set(reset());     // Counter: 0
+counter.set(increment);    // Counter: 1
+counter.set(add(5));       // Counter: 6
+counter.set(decrement);    // Counter: 5
+counter.set(reset);        // Counter: 0
 ```
 
-#### Managing Application State
+#### Example 2: Todo List Manager
 
-Track complex state like a todo list:
+Managing complex state with arrays and objects:
 
 ```javascript
 import Understate from 'understate';
 
-// Define mutator builders
-const addTodo = todo => todos => [...todos, todo];
-const removeTodo = index => todos => todos.filter((_, i) => i !== index);
-const toggleTodo = index => todos => todos.map((todo, i) =>
-  i === index ? { ...todo, done: !todo.done } : todo
-);
+// Mutator builders for todo operations
+const addTodo = text => todos => [
+  ...todos,
+  { id: Date.now(), text, completed: false }
+];
 
-// Initialize state
-const todos = new Understate({ initial: [] });
-todos.subscribe(state => console.log('Todos:', state));
+const toggleTodo = id => todos =>
+  todos.map(todo =>
+    todo.id === id ? { ...todo, completed: !todo.completed } : todo
+  );
 
-// Add todos
-todos.set(addTodo({ text: 'Learn Understate', done: false }));
-todos.set(addTodo({ text: 'Build an app', done: false }));
+const removeTodo = id => todos =>
+  todos.filter(todo => todo.id !== id);
 
-// Toggle completion
-todos.set(toggleTodo(0));
+const clearCompleted = () => todos =>
+  todos.filter(todo => !todo.completed);
+
+// Create the todo list state
+const todoList = new Understate({ initial: [] });
+
+// Subscribe to updates
+todoList.subscribe(todos => {
+  console.log(`Total todos: ${todos.length}`);
+  console.log(`Completed: ${todos.filter(t => t.completed).length}`);
+  // Render your todo list UI here
+});
+
+// Use it
+todoList.set(addTodo('Learn Understate'));
+todoList.set(addTodo('Build an app'));
+todoList.set(toggleTodo(1)); // Mark first todo as complete
 ```
 
-#### Async Operations
+#### Example 3: Form State Management
 
-Handle asynchronous state updates:
+Managing form data and validation:
 
 ```javascript
 import Understate from 'understate';
 
-// Async mutator builder
-const fetchUser = userId => currentState =>
-  fetch(`/api/users/${userId}`)
-    .then(res => res.json())
-    .then(user => ({ ...currentState, user }));
+// Form mutator builders
+const updateField = (field, value) => state => ({
+  ...state,
+  [field]: value,
+  errors: { ...state.errors, [field]: null } // Clear error on change
+});
+
+const setError = (field, message) => state => ({
+  ...state,
+  errors: { ...state.errors, [field]: message }
+});
+
+const resetForm = initialValues => () => ({
+  ...initialValues,
+  errors: {}
+});
+
+// Create form state
+const formState = new Understate({
+  initial: {
+    email: '',
+    password: '',
+    errors: {}
+  }
+});
+
+// Subscribe to form changes
+formState.subscribe(state => {
+  console.log('Form state:', state);
+  // Update form UI, enable/disable submit button, etc.
+});
+
+// Use it
+formState.set(updateField('email', 'user@example.com'));
+formState.set(updateField('password', 'secret123'));
+
+// Validation
+formState.get().then(state => {
+  if (!state.email.includes('@')) {
+    formState.set(setError('email', 'Invalid email address'));
+  }
+});
+```
+
+#### Example 4: Async Data Fetching
+
+Handle asynchronous operations with loading states:
+
+```javascript
+import Understate from 'understate';
+
+// Async mutator for fetching user data
+const fetchUser = userId => async currentState => {
+  // Set loading state
+  const loadingState = { ...currentState, loading: true, error: null };
+
+  try {
+    const response = await fetch(`/api/users/${userId}`);
+    if (!response.ok) throw new Error('Failed to fetch user');
+
+    const user = await response.json();
+    return {
+      user,
+      loading: false,
+      error: null
+    };
+  } catch (error) {
+    return {
+      user: null,
+      loading: false,
+      error: error.message
+    };
+  }
+};
 
 // Create async state
-const appState = new Understate({
-  initial: { user: null },
+const userState = new Understate({
+  initial: { user: null, loading: false, error: null },
   asynchronous: true
 });
 
-appState.subscribe(state => console.log('User:', state.user));
+// Subscribe to state changes
+userState.subscribe(state => {
+  if (state.loading) {
+    console.log('Loading user...');
+  } else if (state.error) {
+    console.error('Error:', state.error);
+  } else if (state.user) {
+    console.log('User loaded:', state.user.name);
+  }
+});
 
-// Fetch user data
-appState.set(fetchUser(123))
-  .then(() => console.log('User loaded!'))
-  .catch(err => console.error('Failed to load user:', err));
+// Fetch user
+userState.set(fetchUser(123));
 ```
 
-#### State History with Indexing
+#### Example 5: Undo/Redo with History
 
-Track state history for undo/redo functionality:
+Track state history for time-travel functionality:
 
 ```javascript
 import Understate from 'understate';
 
-const state = new Understate({
-  initial: 'Start',
-  index: true  // Enable automatic indexing
+// Create state with indexing enabled
+const editorState = new Understate({
+  initial: '',
+  index: true  // Enable automatic state indexing
 });
 
-const ids = [];
+const history = [];
+let historyIndex = -1;
 
-// Track state IDs
-state.subscribe((value, id) => {
-  console.log('State:', value);
-  if (id) ids.push(id);
+// Track all state changes
+editorState.subscribe((content, id) => {
+  if (id && historyIndex === history.length - 1) {
+    // New change - add to history
+    history.push(id);
+    historyIndex++;
+    console.log('Content:', content);
+    console.log(`History: ${historyIndex + 1}/${history.length}`);
+  }
 });
 
-// Make some changes
-state.set(() => 'First change');
-state.set(() => 'Second change');
-state.set(() => 'Third change');
+// Mutators
+const updateContent = newContent => () => newContent;
 
-// Retrieve previous state
-state.get(ids[0]).then(value => console.log('First state:', value));
+// Undo function
+const undo = () => {
+  if (historyIndex > 0) {
+    historyIndex--;
+    return editorState.get(history[historyIndex]);
+  }
+  return Promise.reject(new Error('Nothing to undo'));
+};
+
+// Redo function
+const redo = () => {
+  if (historyIndex < history.length - 1) {
+    historyIndex++;
+    return editorState.get(history[historyIndex]);
+  }
+  return Promise.reject(new Error('Nothing to redo'));
+};
+
+// Usage
+editorState.set(updateContent('Hello'));
+editorState.set(updateContent('Hello World'));
+editorState.set(updateContent('Hello World!'));
+
+// Now you can undo/redo
+undo().then(content => console.log('Undo:', content)); // "Hello World"
+redo().then(content => console.log('Redo:', content)); // "Hello World!"
+```
+
+### Integration Examples
+
+#### Using with React
+
+```javascript
+import { useState, useEffect } from 'react';
+import Understate from 'understate';
+
+// Create state outside component
+const counterState = new Understate({ initial: 0 });
+
+function Counter() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    // Subscribe to state changes
+    const subscription = counterState.subscribe(value => {
+      setCount(value);
+    });
+
+    // Get initial state
+    counterState.get().then(setCount);
+
+    // Cleanup subscription on unmount
+    return () => subscription.unsubscribe();
+  }, []);
+
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={() => counterState.set(x => x + 1)}>
+        Increment
+      </button>
+    </div>
+  );
+}
+```
+
+#### Using with Vue
+
+```javascript
+import { ref, onMounted, onUnmounted } from 'vue';
+import Understate from 'understate';
+
+export default {
+  setup() {
+    const count = ref(0);
+    const counterState = new Understate({ initial: 0 });
+    let subscription;
+
+    onMounted(() => {
+      subscription = counterState.subscribe(value => {
+        count.value = value;
+      });
+      counterState.get().then(value => count.value = value);
+    });
+
+    onUnmounted(() => {
+      subscription.unsubscribe();
+    });
+
+    const increment = () => counterState.set(x => x + 1);
+
+    return { count, increment };
+  }
+};
+```
+
+#### Using in Node.js
+
+```javascript
+// server.js
+import Understate from 'understate';
+
+// Track server metrics
+const metrics = new Understate({
+  initial: { requests: 0, errors: 0, uptime: Date.now() }
+});
+
+// Log metrics changes
+metrics.subscribe(state => {
+  console.log('Metrics updated:', state);
+});
+
+// Update on each request
+app.use((req, res, next) => {
+  metrics.set(state => ({
+    ...state,
+    requests: state.requests + 1
+  }));
+  next();
+});
+
+// Update on errors
+app.use((err, req, res, next) => {
+  metrics.set(state => ({
+    ...state,
+    errors: state.errors + 1
+  }));
+  next(err);
+});
 ```
 
 ### Quick Tips
 
-1. **Mutators should be pure functions**: They take state as input and return a new state without side effects.
+**1. Write Pure Mutators**
+```javascript
+// Good: Pure function, returns new state
+const goodMutator = state => ({ ...state, count: state.count + 1 });
 
-2. **Use builder patterns**: Create reusable mutator factories for common operations:
-   ```javascript
-   const updateField = field => value => state => ({ ...state, [field]: value });
-   ```
+// Bad: Mutates original state
+const badMutator = state => {
+  state.count += 1; // Don't do this!
+  return state;
+};
+```
 
-3. **Chain updates**: Use the `.s()` method for chaining (though order isn't guaranteed):
-   ```javascript
-   state.s(increment).s(increment).s(increment);
-   ```
+**2. Use Builder Pattern for Reusability**
+```javascript
+// Create reusable mutator factories
+const updateField = (field, value) => state => ({
+  ...state,
+  [field]: value
+});
 
-4. **Get current state**: Use the `.get()` method when you need to read state:
-   ```javascript
-   state.get().then(value => console.log(value));
-   ```
+// Use the builder
+state.set(updateField('name', 'John'));
+state.set(updateField('age', 30));
+```
 
-5. **Unsubscribe when done**: Always clean up subscriptions:
-   ```javascript
-   const subscription = state.subscribe(console.log);
-   // Later...
-   subscription.unsubscribe();
-   ```
+**3. Always Clean Up Subscriptions**
+```javascript
+// Store the subscription
+const subscription = state.subscribe(value => {
+  console.log(value);
+});
+
+// Clean up when done (important in components!)
+subscription.unsubscribe();
+```
+
+**4. Use Async/Await for Better Readability**
+```javascript
+// Instead of this:
+state.get().then(value => console.log(value));
+
+// You can use:
+const value = await state.get();
+console.log(value);
+```
+
+**5. Leverage Indexing for Complex Features**
+```javascript
+// Enable indexing for undo/redo, time-travel debugging, etc.
+const state = new Understate({
+  initial: data,
+  index: true  // Automatically track state history
+});
+```
 
 ### Next Steps
 
-- Read the [Basic Usage](#basic-usage) section for detailed examples
-- Learn about [Mutators](#mutators) and [Builders](#builders) for advanced patterns
-- Explore [Routers](#routers) for handling complex action flows
-- Check out [Async Mutators](#asynchronous-mutators) for async operations
+- **Learn the Basics**: Read the [Basic Usage](#basic-usage) section for detailed explanations
+- **Understand Mutators**: Explore [Mutators](#mutators) and [Builders](#builders) for advanced patterns
+- **Handle Complex Logic**: Check out [Routers](#routers) for action dispatching
+- **Work with Async**: See [Async Mutators](#asynchronous-mutators) for async operations
+- **Master Advanced Patterns**: Review [Advanced Usage Patterns](#advanced-usage-patterns)
+- **API Reference**: Consult the [API Reference](#api-reference) for complete method documentation
 
 ## About
 Understate works by creating objects that ingest *mutator* functions to update their *internal state*.
