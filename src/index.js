@@ -97,8 +97,8 @@ export const generateId = function() {
  * - Method chaining for fluent APIs
  *
  * @class Understate
- * @param {UnderstateConfig} [config={}] - Configuration options for the instance
- * @returns {Understate} A new Understate instance
+ * @param {UnderstateConfig} [config={}] - Configuration object with optional properties: initial (any - the starting state value), index (boolean - enables automatic state indexing), asynchronous (boolean - enables async mutator support)
+ * @returns {Understate} A new Understate instance with methods: set(), s(), get(), subscribe(), and id()
  * @throws {TypeError} If config parameter is not an object or null
  * @throws {TypeError} If index parameter is not a boolean when provided
  * @throws {TypeError} If asynchronous parameter is not a boolean when provided
@@ -201,9 +201,9 @@ export const Understate = function({
  *
  * @memberof Understate
  * @method set
- * @param {MutatorFunction} mutator - Function to transform the current state
- * @param {SetConfig} [config={}] - Configuration options for this update
- * @returns {Promise<*>} Promise resolving to the new state (and state ID if indexing is enabled)
+ * @param {MutatorFunction} mutator - Function to transform the current state. Receives the current state as a parameter and should return the new state value (or a Promise resolving to the new state for async operations)
+ * @param {SetConfig} [config={}] - Configuration options for this update. Optional object with properties: index (boolean), asynchronous (boolean)
+ * @returns {Promise<*>} Promise that resolves to the new state value. If indexing is enabled (via config.index or instance default), the promise callback also receives the state ID as a second parameter
  * @throws {TypeError} If mutator is not a function
  * @throws {TypeError} If config is not an object when provided
  * @throws {TypeError} If config.index is not a boolean when provided
@@ -345,9 +345,9 @@ Understate.prototype.set = function(mutator, config = {}) {
  *
  * @memberof Understate
  * @method s
- * @param {MutatorFunction} mutator - Function to transform the current state
- * @param {SetConfig} [config={}] - Configuration options for this update
- * @returns {Understate} The Understate instance for method chaining
+ * @param {MutatorFunction} mutator - Function to transform the current state. Receives the current state as a parameter and should return the new state value
+ * @param {SetConfig} [config={}] - Configuration options for this update. Optional object with properties: index (boolean), asynchronous (boolean)
+ * @returns {Understate} The Understate instance (this) to enable method chaining with other instance methods
  * @throws {TypeError} If mutator is not a function
  * @throws {TypeError} If config is not an object when provided
  * @throws {Error} If set() throws an error
@@ -391,8 +391,8 @@ Understate.prototype.s = function(mutator, config = {}) {
  *
  * @memberof Understate
  * @method get
- * @param {string|boolean} [id=false] - The ID of a previously indexed state, or false for current state
- * @returns {Promise<*>} Promise resolving to the requested state value
+ * @param {string|boolean} [id=false] - The ID string of a previously indexed state to retrieve, or false/undefined to retrieve the current state. Must be a non-empty string when provided
+ * @returns {Promise<*>} Promise that resolves to the requested state value. When retrieving current state (no id), the promise callback receives both the state value and current state ID as parameters
  * @throws {TypeError} If id is provided but is not a string or boolean
  * @throws {Error} If state retrieval fails
  *
@@ -452,8 +452,8 @@ Understate.prototype.get = function(id = false) {
  *
  * @memberof Understate
  * @method subscribe
- * @param {SubscriptionCallback} subscription - Callback invoked after each state update
- * @returns {SubscriptionPointer} Object with unsubscribe method and inherited Understate methods
+ * @param {SubscriptionCallback} subscription - Callback function to be invoked after each state update. Receives the new state value as the first parameter, and optionally the state ID as the second parameter if indexing is enabled
+ * @returns {SubscriptionPointer} A subscription pointer object that inherits all Understate methods and includes an unsubscribe() method to cancel the subscription. This enables nested subscriptions and chaining
  * @throws {TypeError} If subscription is not a function
  * @throws {TypeError} If subscription is null or undefined
  * @throws {Error} If subscription setup fails
@@ -501,8 +501,8 @@ Understate.prototype.subscribe = function(subscription) {
         /**
          * Unsubscribes the callback from state updates.
          *
-         * @param {boolean|number} [unsubscribeParents=false] - If true, unsubscribes parent subscriptions too
-         * @returns {Understate} The original Understate instance
+         * @param {boolean|number} [unsubscribeParents=false] - If true, unsubscribes parent subscriptions too. If a number, unsubscribes that many levels of parent subscriptions (must be a non-negative integer)
+         * @returns {Understate} The original Understate instance to enable further operations
          * @throws {TypeError} If unsubscribeParents is not a boolean or number when provided
          * @throws {RangeError} If unsubscribeParents is a negative number
          */
@@ -563,8 +563,8 @@ Understate.prototype.subscribe = function(subscription) {
  *
  * @memberof Understate
  * @method id
- * @param {boolean} [index=false] - If true, indexes the current state with its ID
- * @returns {string} The unique identifier of the current state
+ * @param {boolean} [index=false] - If true, saves the current state to the index with its ID for later retrieval via get(). If false/undefined, only returns the ID without indexing
+ * @returns {string} A 15-character unique identifier string representing the current state
  * @throws {TypeError} If index parameter is not a boolean when provided
  * @throws {Error} If id retrieval fails
  *
