@@ -17,8 +17,15 @@ const colors = {
     cyan: '\x1b[36m'
 };
 
-// Simple console spinner animation
+/**
+ * Simple console spinner animation class for displaying loading states
+ * @class
+ */
 class ConsoleSpinner {
+    /**
+     * Creates a new ConsoleSpinner instance
+     * @constructor
+     */
     constructor() {
         this.frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
         this.frameIndex = 0;
@@ -26,6 +33,10 @@ class ConsoleSpinner {
         this.isSpinning = false;
     }
 
+    /**
+     * Starts the spinner animation with an optional message
+     * @param {string} [message='Loading'] - The message to display alongside the spinner
+     */
     start(message = 'Loading') {
         if (this.isSpinning) return;
         this.isSpinning = true;
@@ -37,6 +48,10 @@ class ConsoleSpinner {
         }, 80);
     }
 
+    /**
+     * Stops the spinner animation and optionally displays a final message
+     * @param {string|null} [finalMessage=null] - Optional message to display after stopping
+     */
     stop(finalMessage = null) {
         if (!this.isSpinning) return;
         this.isSpinning = false;
@@ -55,7 +70,13 @@ class ConsoleSpinner {
     }
 }
 
-// Simulate an async API call
+/**
+ * Simulates an async API call to fetch user data
+ * @async
+ * @param {number} userId - The ID of the user to fetch
+ * @returns {Promise<Object>} A promise that resolves with user data or rejects with an error
+ * @throws {Error} Network timeout error (simulated 20% of the time)
+ */
 async function fetchUserData(userId) {
     return new Promise((resolve, reject) => {
         setTimeout(() => {
@@ -74,7 +95,12 @@ async function fetchUserData(userId) {
     });
 }
 
-// Simulate processing data
+/**
+ * Simulates processing data with a delay
+ * @async
+ * @param {Object} data - The data to process
+ * @returns {Promise<Object>} A promise that resolves with the processed data including timestamp
+ */
 async function processData(data) {
     return new Promise((resolve) => {
         setTimeout(() => {
@@ -87,7 +113,12 @@ async function processData(data) {
     });
 }
 
-// Main demo
+/**
+ * Runs the main demo showing Understate with loading spinner animations
+ * Demonstrates fetching data and processing it with visual feedback
+ * @async
+ * @returns {Promise<void>}
+ */
 async function runDemo() {
     console.log(`${colors.bright}${colors.blue}=== Understate Loading Spinner Demo ===${colors.reset}\n`);
 
