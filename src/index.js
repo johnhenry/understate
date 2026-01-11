@@ -429,7 +429,7 @@ Understate.prototype.get = function(id = false) {
             }
 
             const state = this._indexed.get(id);
-            if (state === undefined) {
+            if (state === undefined || state === null) {
                 return reject(new Error(`get(): No state found for id "${id}"`));
             }
             resolve(state);
@@ -596,8 +596,10 @@ Understate.prototype.id = function(index = false) {
             if (!this._state && this._getState) {
                 const currentState = this._getState();
                 this._indexed.set(this._id, currentState);
-            } else {
+            } else if (this._state !== null && this._state !== undefined) {
                 this._indexed.set(this._id, this._state);
+            } else {
+                throw new Error('id(): State is not initialized and cannot be indexed');
             }
         }
         return this._id;
