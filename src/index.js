@@ -25,7 +25,7 @@ export const generateId = function() {
         if (typeof randomValue !== 'number' || isNaN(randomValue) || randomValue < 0 || randomValue >= 1) {
             throw new Error('generateId(): Failed to generate valid random number');
         }
-        const idString = String(randomValue).substr(2, 15);
+        const idString = String(randomValue).slice(2, 17);
         if (!idString || idString.length === 0) {
             throw new Error('generateId(): Generated ID string is empty');
         }
@@ -286,18 +286,20 @@ Understate.prototype.set = function(mutator, config = {}) {
         throw new Error(`set(): Failed to process config parameter - ${error.message}`);
     }
 
-    var index = config.index;
-    var asynchronous = config.asynchronous;
+    const { index: configIndex, asynchronous: configAsync } = config;
 
     // Validate index if provided
-    if (config.hasOwnProperty('index') && index !== null && index !== undefined && typeof index !== 'boolean') {
-        throw new TypeError('set(): config.index must be a boolean when provided, received ' + typeof index);
+    if (configIndex !== undefined && configIndex !== null && typeof configIndex !== 'boolean') {
+        throw new TypeError('set(): config.index must be a boolean when provided, received ' + typeof configIndex);
     }
 
     // Validate asynchronous if provided
-    if (config.hasOwnProperty('asynchronous') && asynchronous !== null && asynchronous !== undefined && typeof asynchronous !== 'boolean') {
-        throw new TypeError('set(): config.asynchronous must be a boolean when provided, received ' + typeof asynchronous);
+    if (configAsync !== undefined && configAsync !== null && typeof configAsync !== 'boolean') {
+        throw new TypeError('set(): config.asynchronous must be a boolean when provided, received ' + typeof configAsync);
     }
+
+    const index = configIndex;
+    const asynchronous = configAsync;
 
     var self = this;
 
