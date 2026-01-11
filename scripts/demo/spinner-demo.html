@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understate - Loading Spinner Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .demo-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            background: #0052a3;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Spinner Styles */
+        .spinner {
+            display: none;
+            width: 40px;
+            height: 40px;
+            margin: 20px 0;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0066cc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .spinner.active {
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .data-display {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Understate Loading Spinner Demo</h1>
+        <p class="subtitle">Managing async operations with loading states</p>
+
+        <div class="demo-section">
+            <h2>Simple Async Operation</h2>
+            <button id="fetchBtn">Fetch Data</button>
+            <div class="spinner" id="spinner"></div>
+            <div id="status" class="status hidden"></div>
+            <div id="data" class="data-display hidden"></div>
+        </div>
+
+        <div class="demo-section">
+            <h2>State Information</h2>
+            <div id="stateInfo" class="data-display">
+                Current State: Ready
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Simple Understate implementation for demo
+        // In production, import from: import Understate from 'understate';
+        class Understate {
+            constructor(config = {}) {
+                this._state = config.initial;
+                this._subscribers = [];
+                this._asynchronous = config.asynchronous || false;
+            }
+
+            set(mutator, config = {}) {
+                const self = this;
+                const asynchronous = config.asynchronous !== undefined ?
+                    config.asynchronous : this._asynchronous;
+
+                return new Promise((resolve, reject) => {
+                    try {
+                        const newState = mutator(this._state);
+
+                        if (asynchronous && newState instanceof Promise) {
+                            newState.then(result => {
+                                self._state = result;
+                                self._notify(result);
+                                resolve(result);
+                            }).catch(reject);
+                        } else {
+                            self._state = newState;
+                            self._notify(newState);
+                            resolve(newState);
+                        }
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+            }
+
+            get() {
+                return this._state;
+            }
+
+            subscribe(callback) {
+                this._subscribers.push(callback);
+                return {
+                    unsubscribe: () => {
+                        const index = this._subscribers.indexOf(callback);
+                        if (index > -1) this._subscribers.splice(index, 1);
+                    }
+                };
+            }
+
+            _notify(state) {
+                this._subscribers.forEach(callback => callback(state));
+            }
+        }
+
+        // Initialize state manager with loading state
+        const loadingState = new Understate({
+            initial: {
+                isLoading: false,
+                data: null,
+                error: null,
+                status: 'ready'
+            }
+        });
+
+        // DOM elements
+        const fetchBtn = document.getElementById('fetchBtn');
+        const spinner = document.getElementById('spinner');
+        const statusDiv = document.getElementById('status');
+        const dataDiv = document.getElementById('data');
+        const stateInfo = document.getElementById('stateInfo');
+
+        // Subscribe to state changes and update UI
+        loadingState.subscribe((state) => {
+            console.log('State updated:', state);
+
+            // Update spinner visibility
+            if (state.isLoading) {
+                spinner.classList.add('active');
+                fetchBtn.disabled = true;
+            } else {
+                spinner.classList.remove('active');
+                fetchBtn.disabled = false;
+            }
+
+            // Update status display
+            statusDiv.classList.remove('hidden', 'loading', 'success', 'error');
+
+            if (state.isLoading) {
+                statusDiv.classList.add('loading');
+                statusDiv.textContent = 'Loading data...';
+            } else if (state.error) {
+                statusDiv.classList.add('error');
+                statusDiv.textContent = `Error: ${state.error}`;
+            } else if (state.data) {
+                statusDiv.classList.add('success');
+                statusDiv.textContent = 'Data loaded successfully!';
+            } else {
+                statusDiv.classList.add('hidden');
+            }
+
+            // Update data display
+            if (state.data) {
+                dataDiv.classList.remove('hidden');
+                dataDiv.textContent = JSON.stringify(state.data, null, 2);
+            } else {
+                dataDiv.classList.add('hidden');
+            }
+
+            // Update state info
+            stateInfo.textContent = `Current State:\n${JSON.stringify(state, null, 2)}`;
+        });
+
+        // Simulate async data fetching
+        async function fetchData() {
+            // Simulate API delay
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // Randomly succeed or fail
+            if (Math.random() > 0.2) {
+                return {
+                    id: Math.floor(Math.random() * 1000),
+                    title: 'Sample Data',
+                    timestamp: new Date().toISOString(),
+                    items: ['Item 1', 'Item 2', 'Item 3']
+                };
+            } else {
+                throw new Error('Failed to fetch data');
+            }
+        }
+
+        // Handle fetch button click
+        fetchBtn.addEventListener('click', async () => {
+            // Set loading state
+            await loadingState.set(() => ({
+                isLoading: true,
+                data: null,
+                error: null,
+                status: 'loading'
+            }));
+
+            try {
+                const data = await fetchData();
+
+                // Set success state
+                await loadingState.set(() => ({
+                    isLoading: false,
+                    data: data,
+                    error: null,
+                    status: 'success'
+                }));
+            } catch (error) {
+                // Set error state
+                await loadingState.set(() => ({
+                    isLoading: false,
+                    data: null,
+                    error: error.message,
+                    status: 'error'
+                }));
+            }
+        });
+
+        console.log('Demo initialized. Click "Fetch Data" to see the loading spinner in action!');
+    </script>
+</body>
+</html>
