@@ -647,11 +647,3 @@ Understate.prototype.id = function(index = false) {
 //=============================================================================
 // Exports
 //=============================================================================
-
-/**
- * Default export for backward compatibility.
- * Prefer using the named export `Understate` in new code.
- *
- * @type {Understate}
- */
-export default Understate;

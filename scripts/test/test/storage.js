@@ -1,4 +1,4 @@
-import localStorage from './notLocalStorage.js';
+import { storage as localStorage } from './notLocalStorage.js';
 const LATESTID = "LATEST";
 //Test =========================================================================
 //Storage-----------------------------------------------------------------------
