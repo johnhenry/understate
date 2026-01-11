@@ -1890,3 +1890,6 @@ const badMutator = state => {
 ```
 
 ## Testing Section
+## Installation Notes
+
+Run `npm install` to install dependencies.
