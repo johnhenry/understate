@@ -3,7 +3,7 @@ import { Understate } from './../PROJECT/dist';
 import assert from 'assert';
 import {getStorage, setLatest, LATESTID} from './storage';
 //Utilities-------------------------------------------------------------------
- var log = (state, id = undefined) => {
+ const log = (state, id = undefined) => {
    if(id !== undefined) setLatest(id, state);
    console.capture(`ID: ${id}
 STATE: ${state}`);
@@ -64,15 +64,15 @@ STATE: ${state}`);
     describe('(Empty)', function () {
       it('...', async function () {
         //Builders
-        var constant    = a => _ => a;
-        var addMessageAsync  = message => messages => new Promise((resolve, reject)=>{
+        const constant    = a => _ => a;
+        const addMessageAsync  = message => messages => new Promise((resolve, reject)=>{
         //  if(Math.random() < 0.25) return reject(new Error('Simulated Async Failure'));
           return setTimeout(()=>resolve(messages.concat(message)), 0);
         });
         //Mutators
-        var empty       = constant([]);
+        const empty       = constant([]);
         //App
-        var messages    = new Understate({asynchronous:true});
+        const messages    = new Understate({asynchronous:true});
         messages.set(empty,{asynchronous:false});
         await messages.set(addMessageAsync('Hello'));
         await messages.set(addMessageAsync('there'));
