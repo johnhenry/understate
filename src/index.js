@@ -319,37 +319,34 @@ Understate.prototype.set = function(mutator, config = {}) {
     asynchronous = asynchronous || (asynchronous !== false && self._asynchronous);
     index = index || (index !== false && self._index);
 
-    return new Promise((resolve, reject) => {
+    return (async () => {
         try {
             if (asynchronous) {
                 // Validate that newState[0] is a Promise
                 if (!newState[0] || typeof newState[0].then !== 'function') {
-                    return reject(new TypeError('set(): In asynchronous mode, mutator must return a Promise, received ' + typeof newState[0]));
+                    throw new TypeError('set(): In asynchronous mode, mutator must return a Promise, received ' + typeof newState[0]);
                 }
-                return newState[0].then(newState => {
-                    try {
-                        newState = [newState];
-                        this._setState(newState[0]);
-                        this._setId(generateId(self._getState()));
-                        if (index) {
-                            self._indexed.set(self._getId(), self._getState());
-                            newState.push(self._getId());
-                        }
-                        self._subscriptions.forEach(sub => {
-                            try {
-                                sub.apply(self, newState);
-                            } catch (error) {
-                                // Log but don't fail if a subscription throws
-                                console.error(`set(): Subscription callback error - ${error.message}`);
-                            }
-                        });
-                        return resolve.apply(self, newState);
-                    } catch (error) {
-                        return reject(new Error(`set(): Failed to update state asynchronously - ${error.message}`));
+                try {
+                    const resolvedState = await newState[0];
+                    newState = [resolvedState];
+                    this._setState(newState[0]);
+                    this._setId(generateId(self._getState()));
+                    if (index) {
+                        self._indexed.set(self._getId(), self._getState());
+                        newState.push(self._getId());
                     }
-                }).catch(error => {
-                    reject(new Error(`set(): Asynchronous mutator rejected - ${error.message || error}`));
-                });
+                    self._subscriptions.forEach(sub => {
+                        try {
+                            sub.apply(self, newState);
+                        } catch (error) {
+                            // Log but don't fail if a subscription throws
+                            console.error(`set(): Subscription callback error - ${error.message}`);
+                        }
+                    });
+                    return newState.length === 1 ? newState[0] : newState;
+                } catch (error) {
+                    throw new Error(`set(): Asynchronous mutator rejected - ${error.message || error}`);
+                }
             } else {
                 this._setState(newState[0]);
                 this._setId(generateId(self._getState()));
@@ -365,12 +362,15 @@ Understate.prototype.set = function(mutator, config = {}) {
                         console.error(`set(): Subscription callback error - ${error.message}`);
                     }
                 });
-                return resolve.apply(self, newState);
+                return newState.length === 1 ? newState[0] : newState;
             }
         } catch (error) {
-            reject(new Error(`set(): Unexpected error during state update - ${error.message}`));
+            if (error.message && error.message.startsWith('set():')) {
+                throw error;
+            }
+            throw new Error(`set(): Unexpected error during state update - ${error.message}`);
         }
-    });
+    })();
 };
 
 /**
