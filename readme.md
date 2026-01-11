@@ -1888,3 +1888,7 @@ const badMutator = state => {
   return state;
 };
 ```
+
+## Installation Notes
+
+Run `npm install` to install dependencies.
