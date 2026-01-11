@@ -27,6 +27,11 @@ class ConsoleSpinner {
     }
 
     start(message = 'Loading') {
+        // Validate message input
+        if (typeof message === 'string' && message.trim() === '') {
+            throw new TypeError('ConsoleSpinner.start(): message cannot be an empty string');
+        }
+
         if (this.isSpinning) return;
         this.isSpinning = true;
         this.frameIndex = 0;
@@ -57,6 +62,14 @@ class ConsoleSpinner {
 
 // Simulate an async API call
 async function fetchUserData(userId) {
+    // Validate userId input
+    if (userId === null || userId === undefined) {
+        throw new TypeError('fetchUserData(): userId parameter is required');
+    }
+    if (typeof userId === 'string' && userId.trim() === '') {
+        throw new TypeError('fetchUserData(): userId cannot be an empty string');
+    }
+
     return new Promise((resolve, reject) => {
         setTimeout(() => {
             // Simulate occasional failures
@@ -108,7 +121,12 @@ async function runDemo() {
     // Subscribe to state changes
     appState.subscribe((state) => {
         if (state.isLoading) {
-            spinner.start(state.operation || 'Loading');
+            // Validate operation string before using it
+            const operation = state.operation;
+            if (typeof operation === 'string' && operation.trim() === '') {
+                throw new TypeError('runDemo(): operation cannot be an empty string when loading');
+            }
+            spinner.start(operation || 'Loading');
         } else {
             spinner.stop();
 
