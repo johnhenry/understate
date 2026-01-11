@@ -252,7 +252,7 @@ Understate.prototype.set = function(mutator, config = {}) {
         throw new Error(`set(): Failed to process config parameter - ${error.message}`);
     }
 
-    var index = config.index;
+    const index = config.index;
     var asynchronous = config.asynchronous;
 
     // Validate index if provided
@@ -265,7 +265,7 @@ Understate.prototype.set = function(mutator, config = {}) {
         throw new TypeError('set(): config.asynchronous must be a boolean when provided, received ' + typeof asynchronous);
     }
 
-    var self = this;
+    const self = this;
 
     // Validate state before calling mutator
     var currentState;
@@ -491,14 +491,14 @@ Understate.prototype.subscribe = function(subscription) {
     }
 
     try {
-        var original = this;
+        const original = this;
 
         if (!original._subscriptions || typeof original._subscriptions.add !== 'function') {
             throw new Error('subscribe(): Subscriptions set is not properly initialized');
         }
 
         original._subscriptions.add(subscription);
-        var pointer = Object.create(original);
+        const pointer = Object.create(original);
 
         /**
          * Unsubscribes the callback from state updates.
