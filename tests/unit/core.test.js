@@ -10,7 +10,7 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { Understate, generateId } from '../../src/index.js';
+import { Understate, generateId, validateEmail } from '../../src/index.js';
 
 //=============================================================================
 // Utility Function Tests
@@ -33,6 +33,112 @@ describe('generateId', () => {
   test('should only contain numeric characters', () => {
     const id = generateId();
     assert.ok(/^\d+$/.test(id));
+  });
+});
+
+describe('validateEmail', () => {
+  test('should return true for valid email addresses', () => {
+    assert.strictEqual(validateEmail('user@example.com'), true);
+    assert.strictEqual(validateEmail('test.user@example.com'), true);
+    assert.strictEqual(validateEmail('user+tag@example.co.uk'), true);
+    assert.strictEqual(validateEmail('firstname.lastname@company.org'), true);
+    assert.strictEqual(validateEmail('user_123@test-domain.com'), true);
+  });
+
+  test('should return false for invalid email addresses', () => {
+    assert.strictEqual(validateEmail('invalid.email'), false);
+    assert.strictEqual(validateEmail('@example.com'), false);
+    assert.strictEqual(validateEmail('user@'), false);
+    assert.strictEqual(validateEmail('user @example.com'), false);
+    assert.strictEqual(validateEmail('user@.com'), false);
+    assert.strictEqual(validateEmail('user..name@example.com'), false);
+  });
+
+  test('should return false for empty string', () => {
+    assert.strictEqual(validateEmail(''), false);
+  });
+
+  test('should throw TypeError when email is null', () => {
+    assert.throws(
+      () => validateEmail(null),
+      {
+        name: 'TypeError',
+        message: /email parameter is required/
+      }
+    );
+  });
+
+  test('should throw TypeError when email is undefined', () => {
+    assert.throws(
+      () => validateEmail(undefined),
+      {
+        name: 'TypeError',
+        message: /email parameter is required/
+      }
+    );
+  });
+
+  test('should throw TypeError when email is not a string', () => {
+    assert.throws(
+      () => validateEmail(123),
+      {
+        name: 'TypeError',
+        message: /email parameter must be a string/
+      }
+    );
+  });
+
+  test('should throw TypeError when email is an array', () => {
+    assert.throws(
+      () => validateEmail(['user@example.com']),
+      {
+        name: 'TypeError',
+        message: /email parameter must be a string/
+      }
+    );
+  });
+
+  test('should throw TypeError when email is an object', () => {
+    assert.throws(
+      () => validateEmail({ email: 'user@example.com' }),
+      {
+        name: 'TypeError',
+        message: /email parameter must be a string/
+      }
+    );
+  });
+
+  test('should validate emails with special characters in local part', () => {
+    assert.strictEqual(validateEmail('user!name@example.com'), true);
+    assert.strictEqual(validateEmail('user#name@example.com'), true);
+    assert.strictEqual(validateEmail('user$name@example.com'), true);
+    assert.strictEqual(validateEmail('user%name@example.com'), true);
+  });
+
+  test('should validate emails with hyphens in domain', () => {
+    assert.strictEqual(validateEmail('user@test-domain.com'), true);
+    assert.strictEqual(validateEmail('user@my-test-site.co.uk'), true);
+  });
+
+  test('should validate emails with numbers in domain', () => {
+    assert.strictEqual(validateEmail('user@test123.com'), true);
+    assert.strictEqual(validateEmail('user@123test.org'), true);
+  });
+
+  test('should reject emails with consecutive dots', () => {
+    assert.strictEqual(validateEmail('user..name@example.com'), false);
+    assert.strictEqual(validateEmail('user@example..com'), false);
+  });
+
+  test('should reject emails starting or ending with dot', () => {
+    assert.strictEqual(validateEmail('.user@example.com'), false);
+    assert.strictEqual(validateEmail('user.@example.com'), false);
+  });
+
+  test('should reject emails with invalid characters', () => {
+    assert.strictEqual(validateEmail('user name@example.com'), false);
+    assert.strictEqual(validateEmail('user@exam ple.com'), false);
+    assert.strictEqual(validateEmail('user<>@example.com'), false);
   });
 });
 
