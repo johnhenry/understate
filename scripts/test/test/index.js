@@ -13,21 +13,17 @@ STATE: ${state}`);
 {
   describe('Constructor', function() {
     describe('(Empty)', function () {
-      it('It should not have an initial value', function (done) {
+      it('It should not have an initial value', async function () {
         const understate = new Understate();
-        understate.get().then(state=>{
-          assert.equal(state, undefined);
-          done();
-        })
+        const state = await understate.get();
+        assert.equal(state, undefined);
       });
     });
     describe('Initial Value', function () {
-      it('It should have an initial value. ', function (done) {
+      it('It should have an initial value. ', async function () {
         const understate = new Understate({initial:null});
-        understate.get().then(state=>{
-          assert.equal(state, null);
-          done();
-        })
+        const state = await understate.get();
+        assert.equal(state, null);
       });
     });
   });
@@ -66,7 +62,7 @@ STATE: ${state}`);
 {
   describe('Async', function() {
     describe('(Empty)', function () {
-      it('...', function (done) {
+      it('...', async function () {
         //Builders
         var constant    = a => _ => a;
         var addMessageAsync  = message => messages => new Promise((resolve, reject)=>{
@@ -78,13 +74,11 @@ STATE: ${state}`);
         //App
         var messages    = new Understate({asynchronous:true});
         messages.set(empty,{asynchronous:false});
-        messages.set(addMessageAsync('Hello'))
-          .then(_=>messages.set(addMessageAsync('there'))
-          .then(_=>messages.set(addMessageAsync('John.'))
-          .then(()=>messages.get().then(result=>{
-            assert.deepEqual(result, ["Hello","there","John."]);
-            done();
-          }))));
+        await messages.set(addMessageAsync('Hello'));
+        await messages.set(addMessageAsync('there'));
+        await messages.set(addMessageAsync('John.'));
+        const result = await messages.get();
+        assert.deepEqual(result, ["Hello","there","John."]);
       });
     });
   });
