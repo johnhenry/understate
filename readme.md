@@ -1,5 +1,17 @@
+<div align="center">
+
 # Understate
-A simple state manager.
+
+**A simple, elegant state manager**
+
+[![npm version](https://img.shields.io/npm/v/understate.svg?style=flat-square)](https://www.npmjs.com/package/understate)
+[![license](https://img.shields.io/npm/l/understate.svg?style=flat-square)](https://github.com/johnhenry/understate/blob/master/LICENSE)
+[![npm downloads](https://img.shields.io/npm/dm/understate.svg?style=flat-square)](https://www.npmjs.com/package/understate)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/understate.svg?style=flat-square)](https://bundlephobia.com/package/understate)
+
+</div>
+
+---
 
 This was inspired by [Redux](https://github.com/rackt/redux/) along with another [old project of mine](https://github.com/johnhenry/polyfill-function).
 
