@@ -35,6 +35,42 @@ export const generateId = function() {
     }
 };
 
+/**
+ * Validates email format using a regex pattern.
+ * Checks if the provided string matches the standard email format.
+ *
+ * @function validateEmail
+ * @param {string} email - The email address to validate
+ * @returns {boolean} True if the email format is valid, false otherwise
+ * @throws {TypeError} If email parameter is not a string
+ * @throws {TypeError} If email parameter is null or undefined
+ * @public
+ * @example
+ * validateEmail('user@example.com'); // true
+ * validateEmail('invalid.email'); // false
+ * validateEmail('test@domain.co.uk'); // true
+ */
+export const validateEmail = function(email) {
+    // Validate input parameter
+    if (email === null || email === undefined) {
+        throw new TypeError('validateEmail(): email parameter is required, received ' + email);
+    }
+    if (typeof email !== 'string') {
+        throw new TypeError('validateEmail(): email parameter must be a string, received ' + typeof email);
+    }
+
+    try {
+        // RFC 5322 compliant email regex pattern
+        // Matches most common email formats while being reasonably strict
+        // Disallows consecutive dots, leading/trailing dots, and invalid characters
+        const emailRegex = /^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+        return emailRegex.test(email);
+    } catch (error) {
+        throw new Error(`validateEmail(): Error validating email - ${error.message}`);
+    }
+};
+
 //=============================================================================
 // Type Definitions
 //=============================================================================
