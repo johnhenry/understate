@@ -8,10 +8,37 @@
 [![license](https://img.shields.io/npm/l/understate.svg?style=flat-square)](https://github.com/johnhenry/understate/blob/master/LICENSE)
 [![npm downloads](https://img.shields.io/npm/dm/understate.svg?style=flat-square)](https://www.npmjs.com/package/understate)
 [![bundle size](https://img.shields.io/bundlephobia/minzip/understate.svg?style=flat-square)](https://bundlephobia.com/package/understate)
+[![Node.js CI](https://img.shields.io/github/actions/workflow/status/johnhenry/understate/test.yml?label=tests&style=flat-square)](https://github.com/johnhenry/understate/actions)
 
 </div>
 
 ---
+
+## Table of Contents
+
+- [About](#about)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+  - [Your First State Manager](#your-first-state-manager)
+  - [Common Use Cases](#common-use-cases)
+  - [Integration Examples](#integration-examples)
+  - [Quick Tips](#quick-tips)
+- [Core Concepts](#core-concepts)
+  - [Basic Usage](#basic-usage)
+  - [Indexation](#indexation)
+  - [Mutators](#mutators)
+  - [Builders](#builders)
+  - [Routers](#routers)
+  - [Asynchronous Mutators](#asynchronous-mutators)
+- [Advanced Usage Patterns](#advanced-usage-patterns)
+- [API Reference](#api-reference)
+- [Examples](#examples)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## About
 
 This was inspired by [Redux](https://github.com/rackt/redux/) along with another [old project of mine](https://github.com/johnhenry/polyfill-function).
 
@@ -491,11 +518,11 @@ const state = new Understate({
 - **Master Advanced Patterns**: Review [Advanced Usage Patterns](#advanced-usage-patterns)
 - **API Reference**: Consult the [API Reference](#api-reference) for complete method documentation
 
-## About
-Understate works by creating objects that ingest *mutator* functions to update their *internal state*.
-Wait, what?!
+---
 
-...Okay, let's start over... maybe if we just jump right into it...
+## Core Concepts
+
+Understate works by creating objects that ingest *mutator* functions to update their *internal state*.
 
 ### Basic Usage
 
@@ -707,6 +734,8 @@ state.set(increment)
 
 Indexation is a good reason to consider immutability in your application. Using **mutators** (below) that return modified copies of your state without modifying the original ensures that each id points to a uniquely identifiable object.
 
+---
+
 ## Mutators
 
 **Mutator** functions should be pure functions (they have no side effects) that take in a state and return an updated copy of that state without modifying the original (they respect immutability). With that said, these ideas are pretty much programmatically unenforceable, so if you wish to follow this convention, you'll have to take special care to enforce these properties upon your code yourself.
@@ -754,7 +783,10 @@ Setting state using an action object in Redux
 Redux#store.dispatch(action);
 ```
 
+---
+
 ## Builders
+
 Since a **mutator** function only takes in a state, any modifications that are made to it must be based on its closure.
 
 We can take advantage of this by creating mutation **builder** functions that takes, as arguments, a set of parameters and return **mutators** that use the parameters in its closure.
@@ -1096,6 +1128,8 @@ messages.set(addMessage('John.'))
 
 Note: ECMAScript 8 (2017) has a similar new language feature, also called "decorators", that work in a similar way, but can only be applied to class methods.
 
+---
+
 ## Routers
 
 The final piece of the puzzle is the **router**. Its job is to take "action" from another component in the application, and return a **mutator** function to be applied to the current state. It does this by selecting a **builder** based on an "action" and extracting parameters from that "action".
@@ -1327,6 +1361,8 @@ processActions();
 // State updated: 0
 ```
 
+---
+
 ## Asynchronous Mutators
 
 You can modify an Understate instance at creation to take **asynchronous mutators** by passing a truthy "asynchronous" flag to the config function. Like normal (synchronous) **mutators** these functions take a state as an argument. Instead of returning a modified state; however, they return a promise resolved with the modified state.
@@ -1395,6 +1431,8 @@ messages.set(empty, { asynchronous: false })
 // ['Hello']
 // Failed to add message: Error: Simulated Async Failure
 ```
+
+---
 
 ## Advanced Usage Patterns
 
@@ -1751,6 +1789,85 @@ This is essentially the same signature as a Redux reducer, which first had its p
 ```javascript
 action => previousState => newState
 ```
+
+---
+
+## Examples
+
+Understate comes with several examples to help you get started:
+
+### Demo Applications
+
+- **[Spinner Examples](./scripts/demo/SPINNER_EXAMPLES.md)** - Learn how to manage loading states with spinners
+  - HTML/Browser demo with visual spinner
+  - Node.js CLI demo with terminal spinner
+  - Shows async operation patterns
+
+### Code Examples
+
+Throughout this README, you'll find comprehensive examples for:
+
+- **Basic State Management** - Simple counter, todo lists, form handling
+- **Async Operations** - Data fetching, loading states, error handling
+- **Advanced Patterns** - Time-travel debugging, undo/redo, state composition
+- **Framework Integration** - React hooks, Vue composition API, Node.js servers
+
+### Running Examples
+
+```bash
+# Run the Node.js spinner demo
+node scripts/demo/spinner-demo.js
+
+# Open the HTML demo in your browser
+open scripts/demo/spinner-demo.html
+```
+
+---
+
+## Contributing
+
+Contributions are welcome! We appreciate your help in making Understate better.
+
+### Quick Start for Contributors
+
+```bash
+# Clone the repository
+git clone https://github.com/johnhenry/understate.git
+cd understate
+
+# Install dependencies
+npm install
+
+# Run tests
+npm test
+```
+
+### How to Contribute
+
+1. 🐛 **Report bugs** - [Open an issue](https://github.com/johnhenry/understate/issues)
+2. 💡 **Suggest features** - Share your ideas via issues
+3. 📝 **Improve documentation** - Help make docs clearer
+4. 🔧 **Submit pull requests** - Fix bugs or add features
+
+### Contribution Guidelines
+
+Please read our [Contributing Guide](./CONTRIBUTING.md) for detailed information on:
+
+- Code of conduct
+- Development workflow
+- Coding standards
+- Testing requirements
+- Pull request process
+- Commit message guidelines
+
+### Need Help?
+
+- Check the [documentation](./readme.md)
+- Review [existing issues](https://github.com/johnhenry/understate/issues)
+- Look at [example code](#examples)
+- Ask questions by opening an issue
+
+---
 
 ## API Reference
 
@@ -2186,3 +2303,25 @@ const badMutator = state => {
 ## Installation Notes
 
 Run `npm install` to install dependencies.
+
+---
+
+## License
+
+ISC License
+
+Copyright (c) John Henry
+
+Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+---
+
+<div align="center">
+
+Made with ❤️ by [John Henry](https://github.com/johnhenry)
+
+[npm](https://www.npmjs.com/package/understate) • [GitHub](https://github.com/johnhenry/understate) • [Issues](https://github.com/johnhenry/understate/issues)
+
+</div>
