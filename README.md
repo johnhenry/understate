@@ -195,3 +195,5 @@ ISC License - see [LICENSE](./LICENSE) for details.
 Made with ❤️ by [John Henry](https://github.com/johnhenry)
 
 [npm](https://www.npmjs.com/package/understate) • [GitHub](https://github.com/johnhenry/understate) • [Issues](https://github.com/johnhenry/understate/issues)
+
+<!-- Updated: 2026-01-29 -->
