@@ -1,0 +1,50 @@
+{
+  "cr_version": "0.1",
+  "lineage": {
+    "task_id": "draft-pr-v2",
+    "epoch": 1,
+    "parents": []
+  },
+  "task": {
+    "goal": "Create a file called draft-test-v2.txt with the content \"Draft PR v2 test\"",
+    "success_criteria": [],
+    "constraints": []
+  },
+  "context": {
+    "inputs": [],
+    "assumptions": []
+  },
+  "progress": {
+    "completed": [
+      {
+        "id": "commit-b741801c",
+        "description": "Committed and pushed changes",
+        "completed_at": "2026-01-29T07:31:08Z",
+        "outcome": "sha: b741801c7bbaec71bca9a895b8263fd5d8620cc6"
+      }
+    ],
+    "in_flight": [],
+    "failed": []
+  },
+  "decisions": [],
+  "learnings": [],
+  "effects": {
+    "files_created": [],
+    "files_modified": [
+      "draft-test-v2.txt"
+    ],
+    "files_deleted": [],
+    "external_calls": []
+  },
+  "blockers": [],
+  "continuation": {
+    "resume_points": [
+      {
+        "id": "complete",
+        "action": "Task completed successfully",
+        "priority": "low"
+      }
+    ],
+    "handoff_ready": true
+  }
+}
