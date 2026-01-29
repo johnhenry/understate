@@ -1,0 +1,1 @@
+Testing interactive mode with auto-merge deferral
