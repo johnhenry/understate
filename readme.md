@@ -155,10 +155,13 @@ Managing complex state with arrays and objects:
 ```javascript
 import Understate from 'understate';
 
+// ID counter for unique IDs
+let todoIdCounter = 1;
+
 // Mutator builders for todo operations
 const addTodo = text => todos => [
   ...todos,
-  { id: Date.now(), text, completed: false }
+  { id: todoIdCounter++, text, completed: false }
 ];
 
 const toggleTodo = id => todos =>
@@ -183,9 +186,10 @@ todoList.subscribe(todos => {
 });
 
 // Use it
+const firstId = todoIdCounter; // Store ID before adding
 todoList.set(addTodo('Learn Understate'));
 todoList.set(addTodo('Build an app'));
-todoList.set(toggleTodo(1)); // Mark first todo as complete
+todoList.set(toggleTodo(firstId)); // Mark first todo as complete
 ```
 
 #### Example 3: Form State Management
