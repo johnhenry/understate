@@ -1048,6 +1048,576 @@ describe('Integration Tests', () => {
 });
 
 //=============================================================================
+// Additional Unit Tests for Uncovered Paths
+//=============================================================================
+
+describe('generateId edge cases', () => {
+  test('should generate 15 character or less IDs', () => {
+    const id = generateId();
+    assert.ok(id.length > 0);
+    assert.ok(id.length <= 15);
+  });
+
+  test('should only generate numeric strings', () => {
+    for (let i = 0; i < 10; i++) {
+      const id = generateId();
+      assert.ok(/^\d+$/.test(id), `ID ${id} should be numeric characters`);
+    }
+  });
+});
+
+describe('validateEmail RFC 5322 edge cases', () => {
+  test('should reject consecutive dots in local part', () => {
+    assert.strictEqual(validateEmail('user..name@example.com'), false);
+  });
+
+  test('should reject leading dot in local part', () => {
+    assert.strictEqual(validateEmail('.user@example.com'), false);
+  });
+
+  test('should reject trailing dot in local part', () => {
+    assert.strictEqual(validateEmail('user.@example.com'), false);
+  });
+
+  test('should accept special characters in local part', () => {
+    assert.strictEqual(validateEmail('user!name@example.com'), true);
+    assert.strictEqual(validateEmail('user#name@example.com'), true);
+    assert.strictEqual(validateEmail('user$name@example.com'), true);
+    assert.strictEqual(validateEmail('user%name@example.com'), true);
+    assert.strictEqual(validateEmail('user&name@example.com'), true);
+  });
+
+  test('should reject consecutive dots in domain', () => {
+    assert.strictEqual(validateEmail('user@example..com'), false);
+  });
+
+  test('should reject leading/trailing dots in domain', () => {
+    assert.strictEqual(validateEmail('user@.example.com'), false);
+    assert.strictEqual(validateEmail('user@example.com.'), false);
+  });
+
+  test('should handle complex valid email patterns', () => {
+    assert.strictEqual(validateEmail('user+tag@sub.domain.co.uk'), true);
+    assert.strictEqual(validateEmail('first.last@test-domain.com'), true);
+    assert.strictEqual(validateEmail('user_123@example123.org'), true);
+  });
+});
+
+describe('Understate constructor validation edge cases', () => {
+  test('should accept null as config and use defaults', () => {
+    // Passing null uses default destructuring values
+    const state = new Understate();
+    assert.ok(state instanceof Understate);
+  });
+
+  test('should reject array as config', () => {
+    assert.throws(
+      () => new Understate([1, 2, 3]),
+      {
+        name: 'TypeError',
+        message: /config parameter must be an object/
+      }
+    );
+  });
+
+  test('should reject non-boolean index values', () => {
+    assert.throws(
+      () => new Understate({ index: 'true' }),
+      {
+        name: 'TypeError',
+        message: /index parameter must be a boolean/
+      }
+    );
+
+    assert.throws(
+      () => new Understate({ index: 1 }),
+      {
+        name: 'TypeError',
+        message: /index parameter must be a boolean/
+      }
+    );
+  });
+
+  test('should reject non-boolean asynchronous values', () => {
+    assert.throws(
+      () => new Understate({ asynchronous: 'true' }),
+      {
+        name: 'TypeError',
+        message: /asynchronous parameter must be a boolean/
+      }
+    );
+
+    assert.throws(
+      () => new Understate({ asynchronous: 1 }),
+      {
+        name: 'TypeError',
+        message: /asynchronous parameter must be a boolean/
+      }
+    );
+  });
+});
+
+describe('set() config parameter validation', () => {
+  test('should reject array as config', () => {
+    const state = new Understate({ initial: 0 });
+    assert.rejects(
+      async () => await state.set(val => val + 1, [1, 2]),
+      {
+        name: 'TypeError',
+        message: /config parameter must be an object/
+      }
+    );
+  });
+
+  test('should reject non-boolean index in config', () => {
+    const state = new Understate({ initial: 0 });
+    assert.rejects(
+      async () => await state.set(val => val + 1, { index: 'true' }),
+      {
+        name: 'TypeError',
+        message: /config.index must be a boolean/
+      }
+    );
+  });
+
+  test('should reject non-boolean asynchronous in config', () => {
+    const state = new Understate({ initial: 0 });
+    assert.rejects(
+      async () => await state.set(val => val + 1, { asynchronous: 123 }),
+      {
+        name: 'TypeError',
+        message: /config.asynchronous must be a boolean/
+      }
+    );
+  });
+
+  test('should propagate mutator errors properly', () => {
+    const state = new Understate({ initial: 0 });
+    assert.rejects(
+      async () => await state.set(() => {
+        throw new Error('Custom mutator error');
+      }),
+      {
+        name: 'Error',
+        message: /Mutator function threw an error.*Custom mutator error/
+      }
+    );
+  });
+});
+
+describe('s() method validation and error handling', () => {
+  test('should return instance for method chaining', () => {
+    const state = new Understate({ initial: 0 });
+    const result = state.s(val => val + 1);
+    assert.strictEqual(result, state);
+  });
+
+  test('should propagate errors from set()', () => {
+    const state = new Understate({ initial: 0 });
+    assert.throws(
+      () => state.s(() => {
+        throw new Error('Mutator error in s()');
+      }),
+      {
+        name: 'Error',
+        message: /Failed to update state/
+      }
+    );
+  });
+
+  test('should reject array config', () => {
+    const state = new Understate({ initial: 0 });
+    assert.throws(
+      () => state.s(val => val + 1, []),
+      {
+        name: 'TypeError',
+        message: /config parameter must be an object/
+      }
+    );
+  });
+});
+
+describe('get() indexed retrieval error cases', () => {
+  test('should reject with error for non-existent ID', () => {
+    const state = new Understate({ initial: 0, index: true });
+    assert.rejects(
+      async () => await state.get('nonexistentid123'),
+      {
+        name: 'Error',
+        message: /No state found for id/
+      }
+    );
+  });
+
+  test('should reject empty string ID', () => {
+    const state = new Understate({ initial: 0 });
+    assert.rejects(
+      async () => await state.get(''),
+      {
+        name: 'TypeError',
+        message: /id parameter cannot be an empty string/
+      }
+    );
+  });
+
+  test('should reject non-string, non-boolean ID types', () => {
+    const state = new Understate({ initial: 0 });
+    assert.rejects(
+      async () => await state.get(123),
+      {
+        name: 'TypeError',
+        message: /id parameter must be a string or false/
+      }
+    );
+  });
+
+  test('should handle null and undefined as current state request', async () => {
+    const state = new Understate({ initial: 42 });
+    const valueNull = await state.get(null);
+    const valueUndef = await state.get(undefined);
+    assert.strictEqual(valueNull, 42);
+    assert.strictEqual(valueUndef, 42);
+  });
+});
+
+describe('subscribe() nested subscription edge cases', () => {
+  test('should inherit all methods in subscription pointer', () => {
+    const state = new Understate({ initial: 0 });
+    const pointer = state.subscribe(() => {});
+
+    assert.strictEqual(typeof pointer.set, 'function');
+    assert.strictEqual(typeof pointer.s, 'function');
+    assert.strictEqual(typeof pointer.get, 'function');
+    assert.strictEqual(typeof pointer.subscribe, 'function');
+    assert.strictEqual(typeof pointer.unsubscribe, 'function');
+    assert.strictEqual(typeof pointer.id, 'function');
+  });
+
+  test('should isolate subscription callback errors', async () => {
+    const state = new Understate({ initial: 0 });
+    let errorCallbackExecuted = false;
+    let successCallbackExecuted = false;
+
+    state.subscribe(() => {
+      errorCallbackExecuted = true;
+      throw new Error('Callback error');
+    });
+
+    state.subscribe(() => {
+      successCallbackExecuted = true;
+    });
+
+    await state.set(val => val + 1);
+
+    assert.strictEqual(errorCallbackExecuted, true);
+    assert.strictEqual(successCallbackExecuted, true);
+  });
+
+  test('should allow deeply nested subscriptions', async () => {
+    const state = new Understate({ initial: 0 });
+    const calls = [];
+
+    const sub1 = state.subscribe(() => calls.push(1));
+    const sub2 = sub1.subscribe(() => calls.push(2));
+    const sub3 = sub2.subscribe(() => calls.push(3));
+    const sub4 = sub3.subscribe(() => calls.push(4));
+
+    await state.set(val => val + 1);
+
+    assert.deepStrictEqual(calls, [1, 2, 3, 4]);
+  });
+});
+
+describe('id() method indexing behavior', () => {
+  test('should return ID without indexing when called with false', () => {
+    const state = new Understate({ initial: 42 });
+    const id = state.id(false);
+
+    assert.strictEqual(typeof id, 'string');
+    assert.ok(id.length > 0);
+    assert.strictEqual(state._indexed.size, 0);
+  });
+
+  test('should index current state when called with true', async () => {
+    const state = new Understate({ initial: 'test' });
+    const sizeBefore = state._indexed.size;
+    const id = state.id(true);
+
+    assert.strictEqual(state._indexed.size, sizeBefore + 1);
+    const retrieved = await state.get(id);
+    assert.strictEqual(retrieved, 'test');
+  });
+
+  test('should maintain ID consistency before state updates', () => {
+    const state = new Understate({ initial: 0 });
+    const id1 = state.id();
+    const id2 = state.id();
+    const id3 = state.id();
+
+    assert.strictEqual(id1, id2);
+    assert.strictEqual(id2, id3);
+  });
+
+  test('should generate new ID after state update', async () => {
+    const state = new Understate({ initial: 0 });
+    const idBefore = state.id();
+    await state.set(val => val + 1);
+    const idAfter = state.id();
+
+    assert.notStrictEqual(idBefore, idAfter);
+  });
+
+  test('should reject non-boolean index parameter', () => {
+    const state = new Understate({ initial: 0 });
+    assert.throws(
+      () => state.id('true'),
+      {
+        name: 'TypeError',
+        message: /index parameter must be a boolean/
+      }
+    );
+  });
+
+  test('should populate indexed Map on manual indexing', async () => {
+    const state = new Understate({ initial: 100 });
+    assert.strictEqual(state._indexed.size, 0);
+
+    const id = state.id(true);
+    assert.strictEqual(state._indexed.size, 1);
+
+    const retrieved = await state.get(id);
+    assert.strictEqual(retrieved, 100);
+  });
+});
+
+describe('unsubscribe() numeric levels validation', () => {
+  test('should reject NaN as unsubscribeParents', () => {
+    const state = new Understate({ initial: 0 });
+    const pointer = state.subscribe(() => {});
+
+    assert.throws(
+      () => pointer.unsubscribe(NaN),
+      {
+        name: 'TypeError',
+        message: /unsubscribeParents number cannot be NaN/
+      }
+    );
+  });
+
+  test('should reject negative numbers', () => {
+    const state = new Understate({ initial: 0 });
+    const pointer = state.subscribe(() => {});
+
+    assert.throws(
+      () => pointer.unsubscribe(-1),
+      {
+        name: 'RangeError',
+        message: /unsubscribeParents must be a non-negative number/
+      }
+    );
+  });
+
+  test('should reject non-integer numbers', () => {
+    const state = new Understate({ initial: 0 });
+    const pointer = state.subscribe(() => {});
+
+    assert.throws(
+      () => pointer.unsubscribe(1.5),
+      {
+        name: 'TypeError',
+        message: /unsubscribeParents must be an integer/
+      }
+    );
+  });
+
+  test('should handle 0 as valid level (same as false)', async () => {
+    const state = new Understate({ initial: 0 });
+    const calls = [];
+
+    const parent = state.subscribe(() => calls.push('parent'));
+    const child = parent.subscribe(() => calls.push('child'));
+
+    child.unsubscribe(0);
+
+    await state.set(val => val + 1);
+    assert.deepStrictEqual(calls, ['parent']);
+  });
+
+  test('should handle unsubscribe with specific numeric level', async () => {
+    const state = new Understate({ initial: 0 });
+    const calls = [];
+
+    const level1 = state.subscribe(() => calls.push('level1'));
+    const level2 = level1.subscribe(() => calls.push('level2'));
+    const level3 = level2.subscribe(() => calls.push('level3'));
+    const level4 = level3.subscribe(() => calls.push('level4'));
+
+    // Unsubscribe level4 and 2 parents (level3, level2)
+    level4.unsubscribe(2);
+
+    await state.set(val => val + 1);
+
+    // Only level1 should remain subscribed
+    assert.deepStrictEqual(calls, ['level1']);
+  });
+});
+
+//=============================================================================
+// Integration Tests - Complete Workflows
+//=============================================================================
+
+describe('Integration Tests - Complete Workflows', () => {
+  test('should handle complete workflow with indexing and subscriptions', async () => {
+    const state = new Understate({ initial: 0, index: true });
+    const updates = [];
+    const ids = [];
+
+    state.subscribe((value, id) => {
+      updates.push(value);
+      if (id) ids.push(id);
+    });
+
+    await state.set(val => val + 1);
+    await state.set(val => val * 2);
+    await state.set(val => val + 3);
+
+    assert.strictEqual(updates.length, 3);
+    assert.strictEqual(updates[0], 1);
+    assert.strictEqual(updates[1], 2);
+    assert.strictEqual(updates[2], 5);
+
+    assert.strictEqual(ids.length, 3);
+
+    // Retrieve all historical states by ID
+    const historical1 = await state.get(ids[0]);
+    const historical2 = await state.get(ids[1]);
+    const historical3 = await state.get(ids[2]);
+
+    assert.strictEqual(historical1, 1);
+    assert.strictEqual(historical2, 2);
+    assert.strictEqual(historical3, 5);
+  });
+
+  test('should handle object state management with immutability', async () => {
+    const state = new Understate({
+      initial: { count: 0, items: [] }
+    });
+
+    const updates = [];
+    state.subscribe(value => updates.push(value));
+
+    await state.set(obj => ({
+      ...obj,
+      count: obj.count + 1,
+      items: [...obj.items, 'item1']
+    }));
+
+    await state.set(obj => ({
+      ...obj,
+      count: obj.count + 1,
+      items: [...obj.items, 'item2']
+    }));
+
+    const currentState = await state.get();
+
+    assert.deepStrictEqual(currentState, {
+      count: 2,
+      items: ['item1', 'item2']
+    });
+
+    assert.strictEqual(updates.length, 2);
+    assert.deepStrictEqual(updates[1], {
+      count: 2,
+      items: ['item1', 'item2']
+    });
+  });
+
+  test('should handle async workflow with setTimeout', async () => {
+    const state = new Understate({ initial: 0, asynchronous: true });
+    let subscriptionCalled = false;
+    let receivedValue = null;
+
+    state.subscribe(value => {
+      subscriptionCalled = true;
+      receivedValue = value;
+    });
+
+    await state.set(async val => {
+      return new Promise(resolve => {
+        setTimeout(() => resolve(val + 10), 5);
+      });
+    });
+
+    assert.strictEqual(subscriptionCalled, true);
+    assert.strictEqual(receivedValue, 10);
+
+    const currentState = await state.get();
+    assert.strictEqual(currentState, 10);
+  });
+
+  test('should handle method chaining with s() and verify state', async () => {
+    const state = new Understate({ initial: 1 });
+    const updates = [];
+
+    state.subscribe(val => updates.push(val));
+
+    state
+      .s(val => val + 1)
+      .s(val => val * 2)
+      .s(val => val + 3);
+
+    // Wait for async operations
+    await new Promise(resolve => setTimeout(resolve, 20));
+
+    assert.deepStrictEqual(updates, [2, 4, 7]);
+
+    const finalState = await state.get();
+    assert.strictEqual(finalState, 7);
+  });
+
+  test('should handle nested subscription unsubscribe with 4 levels', async () => {
+    const state = new Understate({ initial: 0 });
+    const calls = { level1: 0, level2: 0, level3: 0, level4: 0 };
+
+    const level1 = state.subscribe(() => calls.level1++);
+    const level2 = level1.subscribe(() => calls.level2++);
+    const level3 = level2.subscribe(() => calls.level3++);
+    const level4 = level3.subscribe(() => calls.level4++);
+
+    await state.set(val => val + 1);
+
+    assert.strictEqual(calls.level1, 1);
+    assert.strictEqual(calls.level2, 1);
+    assert.strictEqual(calls.level3, 1);
+    assert.strictEqual(calls.level4, 1);
+
+    // Unsubscribe level4 and 2 parents (goes up to level2)
+    level4.unsubscribe(2);
+
+    await state.set(val => val + 1);
+
+    // Only level1 should still be subscribed
+    assert.strictEqual(calls.level1, 2);
+    assert.strictEqual(calls.level2, 1); // Not incremented
+    assert.strictEqual(calls.level3, 1); // Not incremented
+    assert.strictEqual(calls.level4, 1); // Not incremented
+  });
+
+  test('should handle indexed state after 100+ updates', async () => {
+    const state = new Understate({ initial: 0, index: true });
+
+    for (let i = 0; i < 100; i++) {
+      await state.set(val => val + 1);
+    }
+
+    assert.ok(state._indexed.size >= 100);
+
+    const currentState = await state.get();
+    assert.strictEqual(currentState, 100);
+  });
+});
+
+//=============================================================================
 // Edge Cases and Error Handling
 //=============================================================================
 

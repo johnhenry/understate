@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'assert';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const Understate = require('../../dist/index.js');
+const { Understate } = require('../../dist/index.js');
 
 //=============================================================================
 // Test Suite: id() Method Edge Cases
@@ -76,11 +76,10 @@ describe('id() method', function() {
   });
 
   describe('with invalid indexing parameter', function() {
-    it('should handle non-boolean index parameter gracefully', function() {
+    it('should throw for non-boolean index parameter', function() {
       const state = new Understate({ initial: 'test' });
-      // The dist version doesn't validate this, so it should not throw
-      const id = state.id('true');
-      assert.strictEqual(typeof id, 'string');
+      // The dist version validates this and throws
+      assert.throws(() => state.id('true'), TypeError);
     });
   });
 });
@@ -94,7 +93,8 @@ describe('get() with indexed state IDs', function() {
     it('should retrieve state by valid ID', async function() {
       const state = new Understate({ initial: 100, index: true });
 
-      const [newState, id] = await state.set(_ => 200, { index: true });
+      await state.set(_ => 200, { index: true });
+      const id = state.id();
       const retrievedState = await state.get(id);
       assert.strictEqual(retrievedState, 200);
     });
@@ -102,15 +102,18 @@ describe('get() with indexed state IDs', function() {
     it('should retrieve multiple different indexed states', async function() {
       const state = new Understate({ initial: 'a', index: true });
 
-      const [state1, id1] = await state.set(_ => 'b', { index: true });
-      const [state2, id2] = await state.set(_ => 'c', { index: true });
-      const [state3, id3] = await state.set(_ => 'd', { index: true });
+      await state.set(_ => 'b', { index: true });
+      const id1 = state.id();
 
-      const [retrieved1, retrieved2, retrieved3] = await Promise.all([
-        state.get(id1),
-        state.get(id2),
-        state.get(id3)
-      ]);
+      await state.set(_ => 'c', { index: true });
+      const id2 = state.id();
+
+      await state.set(_ => 'd', { index: true });
+      const id3 = state.id();
+
+      const retrieved1 = await state.get(id1);
+      const retrieved2 = await state.get(id2);
+      const retrieved3 = await state.get(id3);
 
       assert.strictEqual(retrieved1, 'b');
       assert.strictEqual(retrieved2, 'c');
@@ -131,24 +134,34 @@ describe('get() with indexed state IDs', function() {
   });
 
   describe('error handling for invalid IDs', function() {
-    it('should return undefined for non-existent ID', async function() {
+    it('should reject for non-existent ID', async function() {
       const state = new Understate({ initial: 'test', index: true });
-      const result = await state.get('nonexistent123');
-      assert.strictEqual(result, undefined);
+      try {
+        await state.get('nonexistent123');
+        assert.fail('Should have rejected');
+      } catch (error) {
+        assert.ok(error.message.includes('No state found for id'));
+      }
     });
 
-    it('should handle empty string ID', async function() {
+    it('should reject empty string ID', async function() {
       const state = new Understate({ initial: 'test' });
-      // The dist version doesn't validate empty strings
-      const result = await state.get('');
-      assert.strictEqual(result, undefined);
+      try {
+        await state.get('');
+        assert.fail('Should have rejected');
+      } catch (error) {
+        assert.ok(error.message.includes('empty string'));
+      }
     });
 
-    it('should handle numeric ID by converting to string key', async function() {
+    it('should reject numeric ID', async function() {
       const state = new Understate({ initial: 'test' });
-      // JavaScript Map will handle numeric keys
-      const result = await state.get(123);
-      assert.strictEqual(result, undefined);
+      try {
+        await state.get(123);
+        assert.fail('Should have rejected');
+      } catch (error) {
+        assert.ok(error.message.includes('must be a string'));
+      }
     });
   });
 
@@ -167,6 +180,423 @@ describe('get() with indexed state IDs', function() {
 
       const retrievedState = await state.get(id);
       assert.strictEqual(retrievedState, undefined);
+    });
+  });
+});
+
+//=============================================================================
+// Test Suite: Asynchronous Mutator Rejection Scenarios
+//=============================================================================
+
+describe('asynchronous mutator rejection scenarios', function() {
+  describe('async mode with non-Promise returns', function() {
+    it('should reject when async mutator returns non-Promise value', async function() {
+      const state = new Understate({ initial: 0, asynchronous: true });
+
+      try {
+        await state.set(_ => 42);
+        assert.fail('Should have rejected');
+      } catch (error) {
+        assert.ok(error instanceof Error);
+      }
+    });
+
+    it('should reject when async mutator returns string', async function() {
+      const state = new Understate({ initial: 0, asynchronous: true });
+
+      try {
+        await state.set(_ => 'not a promise');
+        assert.fail('Should have rejected');
+      } catch (error) {
+        assert.ok(error instanceof Error);
+      }
+    });
+
+    it('should reject when async mutator returns object', async function() {
+      const state = new Understate({ initial: 0, asynchronous: true });
+
+      try {
+        await state.set(_ => ({ value: 10 }));
+        assert.fail('Should have rejected');
+      } catch (error) {
+        assert.ok(error instanceof Error);
+      }
+    });
+
+    it('should reject when async mutator returns null', async function() {
+      const state = new Understate({ initial: 0, asynchronous: true });
+
+      try {
+        await state.set(_ => null);
+        assert.fail('Should have rejected');
+      } catch (error) {
+        assert.ok(error instanceof Error);
+      }
+    });
+  });
+
+  describe('Promise.reject() handling', function() {
+    it('should handle Promise.reject with Error', async function() {
+      const state = new Understate({ initial: 0, asynchronous: true });
+
+      try {
+        await state.set(_ => Promise.reject(new Error('Rejected promise')));
+        assert.fail('Should have rejected');
+      } catch (error) {
+        assert.ok(error instanceof Error);
+        assert.ok(error.message.includes('Rejected promise'));
+      }
+    });
+
+    it('should handle Promise.reject with string', async function() {
+      const state = new Understate({ initial: 0, asynchronous: true });
+
+      try {
+        await state.set(_ => Promise.reject('String rejection'));
+        assert.fail('Should have rejected');
+      } catch (error) {
+        assert.ok(error instanceof Error);
+      }
+    });
+
+    it('should handle Promise that throws inside then', async function() {
+      const state = new Understate({ initial: 0, asynchronous: true });
+
+      try {
+        await state.set(_ => Promise.resolve(10).then(() => {
+          throw new Error('Error in then');
+        }));
+        assert.fail('Should have rejected');
+      } catch (error) {
+        assert.ok(error instanceof Error);
+      }
+    });
+  });
+
+  describe('async mutator with config override', function() {
+    it('should reject non-Promise when config.asynchronous=true', async function() {
+      const state = new Understate({ initial: 0 });
+
+      try {
+        await state.set(_ => 'sync value', { asynchronous: true });
+        assert.fail('Should have rejected');
+      } catch (error) {
+        assert.ok(error instanceof Error);
+      }
+    });
+
+    it('should accept Promise when config.asynchronous=true', async function() {
+      const state = new Understate({ initial: 0 });
+
+      const result = await state.set(_ => Promise.resolve(100), { asynchronous: true });
+      assert.strictEqual(result, 100);
+    });
+  });
+});
+
+//=============================================================================
+// Test Suite: State Transition Sequences
+//=============================================================================
+
+describe('state transition sequences', function() {
+  describe('undefined → defined → null → undefined transitions', function() {
+    it('should handle undefined to defined transition', async function() {
+      const state = new Understate();
+      const values = [];
+
+      state.subscribe(val => values.push(val));
+
+      await state.set(_ => 'defined');
+      await state.set(_ => 42);
+
+      assert.deepStrictEqual(values, ['defined', 42]);
+    });
+
+    it('should handle defined to null transition', async function() {
+      const state = new Understate({ initial: 'something' });
+      const values = [];
+
+      state.subscribe(val => values.push(val));
+
+      await state.set(_ => null);
+
+      assert.deepStrictEqual(values, [null]);
+    });
+
+    it('should handle null to undefined transition', async function() {
+      const state = new Understate({ initial: null });
+      const values = [];
+
+      state.subscribe(val => values.push(val));
+
+      await state.set(_ => undefined);
+
+      assert.deepStrictEqual(values, [undefined]);
+    });
+
+    it('should handle complete cycle: undefined → defined → null → undefined', async function() {
+      const state = new Understate();
+      const values = [];
+
+      state.subscribe(val => values.push(val));
+
+      await state.set(_ => 'defined');
+      await state.set(_ => null);
+      await state.set(_ => undefined);
+
+      assert.deepStrictEqual(values, ['defined', null, undefined]);
+    });
+  });
+
+  describe('falsy value preservation', function() {
+    it('should preserve 0 as valid state', async function() {
+      const state = new Understate({ initial: 100 });
+      const values = [];
+
+      state.subscribe(val => values.push(val));
+
+      await state.set(_ => 0);
+
+      assert.strictEqual(values[0], 0);
+      const current = await state.get();
+      assert.strictEqual(current, 0);
+    });
+
+    it('should preserve false as valid state', async function() {
+      const state = new Understate({ initial: true });
+      const values = [];
+
+      state.subscribe(val => values.push(val));
+
+      await state.set(_ => false);
+
+      assert.strictEqual(values[0], false);
+      const current = await state.get();
+      assert.strictEqual(current, false);
+    });
+
+    it('should preserve empty string as valid state', async function() {
+      const state = new Understate({ initial: 'nonempty' });
+      const values = [];
+
+      state.subscribe(val => values.push(val));
+
+      await state.set(_ => '');
+
+      assert.strictEqual(values[0], '');
+      const current = await state.get();
+      assert.strictEqual(current, '');
+    });
+
+    it('should handle transitions through all falsy values', async function() {
+      const state = new Understate({ initial: 1 });
+      const values = [];
+
+      state.subscribe(val => values.push(val));
+
+      await state.set(_ => 0);
+      await state.set(_ => false);
+      await state.set(_ => '');
+      await state.set(_ => null);
+      await state.set(_ => undefined);
+
+      assert.deepStrictEqual(values, [0, false, '', null, undefined]);
+    });
+  });
+});
+
+//=============================================================================
+// Test Suite: Subscription Behavior Under Stress
+//=============================================================================
+
+describe('subscription notification during rapid updates', function() {
+  it('should notify subscribers during rapid consecutive updates', async function() {
+    const state = new Understate({ initial: 0 });
+    const updates = [];
+
+    state.subscribe(val => updates.push(val));
+
+    const promises = [];
+    for (let i = 1; i <= 10; i++) {
+      promises.push(state.set(_ => i));
+    }
+
+    await Promise.all(promises);
+
+    assert.strictEqual(updates.length, 10);
+    assert.ok(updates.includes(10));
+  });
+
+  it('should handle subscription callbacks throwing errors without blocking others', async function() {
+    const state = new Understate({ initial: 0 });
+    const successfulCalls = [];
+
+    state.subscribe(() => {
+      throw new Error('First subscriber error');
+    });
+
+    state.subscribe(val => {
+      successfulCalls.push(val);
+    });
+
+    state.subscribe(() => {
+      throw new Error('Third subscriber error');
+    });
+
+    state.subscribe(val => {
+      successfulCalls.push(val);
+    });
+
+    await state.set(_ => 42);
+
+    // Both non-throwing subscribers should have been called
+    assert.strictEqual(successfulCalls.length, 2);
+    assert.strictEqual(successfulCalls[0], 42);
+    assert.strictEqual(successfulCalls[1], 42);
+  });
+
+  it('should maintain subscription order during rapid updates', async function() {
+    const state = new Understate({ initial: 0 });
+    const order = [];
+
+    state.subscribe(() => order.push(1));
+    state.subscribe(() => order.push(2));
+    state.subscribe(() => order.push(3));
+
+    await state.set(_ => 10);
+
+    assert.deepStrictEqual(order, [1, 2, 3]);
+  });
+});
+
+//=============================================================================
+// Test Suite: Indexed State Retrieval at Scale
+//=============================================================================
+
+describe('indexed state retrieval after 100+ updates', function() {
+  it('should maintain Map consistency after 100+ updates', async function() {
+    const state = new Understate({ initial: 0, index: true });
+
+    for (let i = 1; i <= 100; i++) {
+      await state.set(_ => i);
+    }
+
+    // Should have at least 100 entries (initial + 100 updates)
+    assert.ok(state._indexed.size >= 100);
+
+    const current = await state.get();
+    assert.strictEqual(current, 100);
+  });
+
+  it('should retrieve historical states after many updates', async function() {
+    const state = new Understate({ initial: 0, index: true });
+    const ids = [];
+
+    state.subscribe((val, id) => {
+      if (id) ids.push(id);
+    });
+
+    for (let i = 1; i <= 50; i++) {
+      await state.set(_ => i);
+    }
+
+    // Retrieve some historical states
+    const state10 = await state.get(ids[9]);
+    const state25 = await state.get(ids[24]);
+    const state50 = await state.get(ids[49]);
+
+    assert.strictEqual(state10, 10);
+    assert.strictEqual(state25, 25);
+    assert.strictEqual(state50, 50);
+  });
+
+  it('should handle indexed Map memory with large state objects', async function() {
+    const state = new Understate({
+      initial: { data: new Array(100).fill(0) },
+      index: true
+    });
+
+    for (let i = 1; i <= 20; i++) {
+      await state.set(obj => ({
+        data: [...obj.data, i]
+      }));
+    }
+
+    assert.ok(state._indexed.size >= 20);
+
+    const current = await state.get();
+    assert.strictEqual(current.data.length, 120);
+  });
+});
+
+//=============================================================================
+// Test Suite: Mutator Parameter Validation
+//=============================================================================
+
+describe('mutator parameter validation for all types', function() {
+  describe('set() with null mutator', function() {
+    it('should throw when mutator is null', function() {
+      const state = new Understate({ initial: 0 });
+
+      assert.throws(
+        () => state.set(null),
+        Error
+      );
+    });
+  });
+
+  describe('set() with undefined mutator', function() {
+    it('should throw when mutator is undefined', function() {
+      const state = new Understate({ initial: 0 });
+
+      assert.throws(
+        () => state.set(undefined),
+        Error
+      );
+    });
+  });
+
+  describe('set() with string mutator', function() {
+    it('should throw when mutator is a string', function() {
+      const state = new Understate({ initial: 0 });
+
+      assert.throws(
+        () => state.set('not a function'),
+        Error
+      );
+    });
+  });
+
+  describe('set() with number mutator', function() {
+    it('should throw when mutator is a number', function() {
+      const state = new Understate({ initial: 0 });
+
+      assert.throws(
+        () => state.set(42),
+        Error
+      );
+    });
+  });
+
+  describe('set() with array mutator', function() {
+    it('should throw when mutator is an array', function() {
+      const state = new Understate({ initial: 0 });
+
+      assert.throws(
+        () => state.set([1, 2, 3]),
+        Error
+      );
+    });
+  });
+
+  describe('set() with object mutator', function() {
+    it('should throw when mutator is an object', function() {
+      const state = new Understate({ initial: 0 });
+
+      assert.throws(
+        () => state.set({ value: 10 }),
+        Error
+      );
     });
   });
 });
@@ -262,20 +692,21 @@ describe('error handling for invalid mutators', function() {
         });
         assert.fail('Should have rejected');
       } catch (error) {
-        assert.ok(error instanceof TypeError);
+        assert.ok(error instanceof Error);
         assert.ok(error.message.includes('Type error in mutator'));
       }
     });
   });
 
   describe('set() with invalid config', function() {
-    it('should handle config gracefully even if not an object', function() {
+    it('should throw for non-object config', async function() {
       const state = new Understate({ initial: 0 });
-      // The dist version uses Object.assign which will convert primitives
-      // It should not throw
-      assert.doesNotThrow(() => {
-        state.set(_ => 10, 'invalid config');
-      });
+      try {
+        await state.set(_ => 10, 'invalid config');
+        assert.fail('Should have thrown');
+      } catch (error) {
+        assert.ok(error.message.includes('config parameter must be an object'));
+      }
     });
   });
 
@@ -475,24 +906,22 @@ describe('unsubscribe with parent propagation', function() {
   });
 
   describe('unsubscribe parameter validation', function() {
-    it('should handle non-boolean/non-number parameter gracefully', function() {
+    it('should throw for non-boolean/non-number parameter', function() {
       const state = new Understate({ initial: 0 });
       const sub = state.subscribe(() => {});
 
-      // The dist version doesn't validate parameter types strictly
-      assert.doesNotThrow(() => {
+      assert.throws(() => {
         sub.unsubscribe('true');
-      });
+      }, TypeError);
     });
 
-    it('should handle negative numbers', function() {
+    it('should throw for negative numbers', function() {
       const state = new Understate({ initial: 0 });
       const sub = state.subscribe(() => {});
 
-      // The dist version has a TODO for validation but doesn't enforce it
-      assert.doesNotThrow(() => {
+      assert.throws(() => {
         sub.unsubscribe(-1);
-      });
+      }, RangeError);
     });
   });
 
