@@ -64,6 +64,8 @@ counter.set(decrement);    // Logs: "Counter: 5"
 counter.get().then(value => console.log('Current:', value)); // 5
 ```
 
+For more comprehensive examples showcasing all library features, see [examples/comprehensive-demo.js](./examples/comprehensive-demo.js).
+
 ### Using with Async Operations
 
 ```javascript
